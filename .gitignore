@@ -4,3 +4,7 @@
 .idea/
 
 secret.py
+
+*.pyc
+
+*.pkl
