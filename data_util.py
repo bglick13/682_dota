@@ -4,6 +4,8 @@ import datetime
 import pickle
 import os
 import networkx as nx
+from tqdm import tqdm
+from sklearn.preprocessing import LabelEncoder
 
 
 def parse_draft_orders_for_prediction(df):
@@ -23,7 +25,17 @@ def parse_draft_orders_for_prediction(df):
     return np.array(out)
 
 
-def parse_graph_for_mlm_prediction(g: nx.Graph):
+def parse_graph_for_mlm_prediction(g: nx.Graph, hero_ids):
     out = []
-    for edge in g.edges:
-        r_heros = edge
+
+    # LabelEncoder makes the hero_ids dense and 0 indexed
+    le = LabelEncoder()
+    le.fit(hero_ids)
+    for edge in tqdm(g.edges(data=True)):
+        heros = np.append(*edge[:2])
+        if 0 in heros:
+            continue
+        heros = le.transform(heros)
+        for _ in range(len(edge[2]['wins'])):
+            out.append(heros)
+    return np.array(out), le

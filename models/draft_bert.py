@@ -10,20 +10,20 @@ class DraftBertTasks(Enum):
 
 
 class DraftBert(torch.nn.Module):
-    def __init__(self, embedding_dim, ff_dim, n_head, n_encoder_layers, n_heros, out_ff_dim):
+    def __init__(self, embedding_dim, ff_dim, n_head, n_encoder_layers, n_heros):
         super().__init__()
         self.embedding_dim = embedding_dim
         self.n_head = n_head
         self.n_encoder_layers = n_encoder_layers
         self.n_heros = n_heros
 
-        self.encoder_layer = torch.nn.TransformerEncoderLayer(embedding_dim, n_head, dim_feedforward=ff_dim)
+        self.encoder_layer = torch.nn.TransformerEncoderLayer(embedding_dim, n_head, dim_feedforward=ff_dim, dropout=0.2)
         self.encoder = torch.nn.TransformerEncoder(self.encoder_layer, n_encoder_layers)
 
         # Masked output layers
-        self.dense_layer = torch.nn.Linear(embedding_dim, out_ff_dim)
-        self.layer_norm = torch.nn.LayerNorm(out_ff_dim)
-        self.output_layer = torch.nn.Linear(out_ff_dim, n_heros)
+        self.dense_layer = torch.nn.Linear(embedding_dim, embedding_dim)
+        self.layer_norm = torch.nn.LayerNorm(embedding_dim)
+        # self.output_layer = torch.nn.Linear(out_ff_dim, n_heros)
 
         dictionary_size = n_heros + 1 + 1  # + 1 for CLS token and + 1 for MASK
         self.PADDING_IDX = dictionary_size - 1
@@ -55,7 +55,7 @@ class DraftBert(torch.nn.Module):
         x = self.dense_layer(x)
         x = self.layer_norm(x)
         x = F.relu(x)
-        x = self.output_layer(x)
+        x = x.matmul(self.hero_embeddings.weight.T)
         return x
 
     def _gen_random_masks(self, x: torch.LongTensor, pct=0.1):
@@ -91,9 +91,10 @@ class DraftBert(torch.nn.Module):
         batch_size = train_kwargs.get('batch_size', 512)
         steps = train_kwargs.get('steps', 100)
         mask_pct = train_kwargs.get('mask_pct', 0.1)
+        print_iter = train_kwargs.get('print_iter', 100)
 
         if task == DraftBertTasks.DRAFT_PREDICTION:
-            opt = torch.optim.Adam(self.parameters())
+            opt = torch.optim.Adam(self.parameters(), lr=lr)
             N = src.shape[0]
             loss = torch.nn.CrossEntropyLoss()
             for step in range(steps):
@@ -115,14 +116,17 @@ class DraftBert(torch.nn.Module):
                 opt.step()
 
                 batch_acc = (pred.detach().cpu().numpy().argmax(1) == tgt_batch.detach().cpu().numpy()).astype(int).mean()
-                print(f'Step: {step}, Loss: {batch_loss}, Acc: {batch_acc}')
+                if step == 0 or (step+1) % print_iter == 0:
+                    print(f'Step: {step}, Loss: {batch_loss}, Acc: {batch_acc}')
 
-    def predict(self, src: torch.LongTensor, mask: torch.BoolTensor, task: DraftBertTasks):
+    def predict(self, src: torch.LongTensor, mask: torch.BoolTensor, task: DraftBertTasks,
+                **predict_kwargs):
+
         if isinstance(src, (list, np.ndarray)):
             src = torch.LongTensor(src)
         if isinstance(mask, (list, np.ndarray)):
             mask = torch.BoolTensor(mask)
-        self.train(False)
+        self.eval()
         if task == DraftBertTasks.DRAFT_PREDICTION:
             src = src.cuda()
             mask = mask.cuda()
