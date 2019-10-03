@@ -2,6 +2,7 @@ import torch
 from torch.functional import F
 from enum import Enum
 import numpy as np
+from tqdm import tqdm
 
 
 class DraftBertTasks(Enum):
@@ -9,8 +10,29 @@ class DraftBertTasks(Enum):
     DRAFT_MATCHING = 2
 
 
+class PositionalEncoding(torch.nn.Module):
+    "Implement the PE function."
+
+    def __init__(self, d_model, dropout, max_len=5000):
+        super(PositionalEncoding, self).__init__()
+        self.dropout = torch.nn.Dropout(p=dropout)
+
+        # Compute the positional encodings once in log space.
+        pe = torch.zeros(max_len, d_model)
+        position = torch.arange(0.0, max_len).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0.0, d_model, 2) * -(np.log(10000.0) / d_model))
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        pe = pe.unsqueeze(0)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x):
+        x = x + torch.autograd.Variable(self.pe[:, :x.size(1)], requires_grad=False)
+        return self.dropout(x)
+
+
 class DraftBert(torch.nn.Module):
-    def __init__(self, embedding_dim, ff_dim, n_head, n_encoder_layers, n_heros):
+    def __init__(self, embedding_dim, ff_dim, n_head, n_encoder_layers, n_heros, out_ff_dim):
         super().__init__()
         self.embedding_dim = embedding_dim
         self.n_head = n_head
@@ -21,13 +43,15 @@ class DraftBert(torch.nn.Module):
         self.encoder = torch.nn.TransformerEncoder(self.encoder_layer, n_encoder_layers)
 
         # Masked output layers
-        self.dense_layer = torch.nn.Linear(embedding_dim, embedding_dim)
-        self.layer_norm = torch.nn.LayerNorm(embedding_dim)
-        # self.output_layer = torch.nn.Linear(out_ff_dim, n_heros)
+        self.dense_layer = torch.nn.Linear(embedding_dim, out_ff_dim)
+        self.layer_norm = torch.nn.LayerNorm(out_ff_dim)
+        self.output_layer = torch.nn.Linear(out_ff_dim, n_heros)
 
         dictionary_size = n_heros + 1 + 1  # + 1 for CLS token and + 1 for MASK
         self.PADDING_IDX = dictionary_size - 1
+        self.CLS_IDX = dictionary_size - 2
         self.hero_embeddings = torch.nn.Embedding(dictionary_size, embedding_dim, padding_idx=self.PADDING_IDX)
+        self.pe = PositionalEncoding(embedding_dim, 0, max_len=10)
 
     def forward(self, src: torch.LongTensor, mask: torch.BoolTensor):
         """
@@ -41,6 +65,8 @@ class DraftBert(torch.nn.Module):
         # First, we encode the src sequence into the latent hero representation
         src[mask] = self.PADDING_IDX  # Set the masked values to the embedding pad idx
         src = self.hero_embeddings(src)
+        src = src + np.sqrt(self.embedding_dim)
+        src = self.pe(src)
 
         # Encoder expects shape (seq_length, batch_size, embedding_dim)
         src = src.permute(1, 0, 2)
@@ -55,7 +81,7 @@ class DraftBert(torch.nn.Module):
         x = self.dense_layer(x)
         x = self.layer_norm(x)
         x = F.relu(x)
-        x = x.matmul(self.hero_embeddings.weight.T)
+        x = self.output_layer(x)
         return x
 
     def _gen_random_masks(self, x: torch.LongTensor, pct=0.1):
@@ -96,8 +122,8 @@ class DraftBert(torch.nn.Module):
         if task == DraftBertTasks.DRAFT_PREDICTION:
             opt = torch.optim.Adam(self.parameters(), lr=lr)
             N = src.shape[0]
-            loss = torch.nn.CrossEntropyLoss()
-            for step in range(steps):
+            loss = torch.nn.CrossEntropyLoss(reduction='mean')
+            for step in tqdm(range(steps)):
                 opt.zero_grad()
                 idxs = np.random.choice(N, batch_size)
                 src_batch, tgt_batch = src[idxs], tgt[idxs]
@@ -115,9 +141,14 @@ class DraftBert(torch.nn.Module):
                 batch_loss.backward()
                 opt.step()
 
-                batch_acc = (pred.detach().cpu().numpy().argmax(1) == tgt_batch.detach().cpu().numpy()).astype(int).mean()
                 if step == 0 or (step+1) % print_iter == 0:
-                    print(f'Step: {step}, Loss: {batch_loss}, Acc: {batch_acc}')
+                    batch_acc = (pred.detach().cpu().numpy().argmax(1) == tgt_batch.detach().cpu().numpy()).astype(
+                        int).mean()
+                    top_5_pred = np.argsort(pred.detach().cpu().numpy(), axis=1)[:, -5:]
+                    top_5_acc = np.array([t in p for t, p in zip(tgt_batch.detach().cpu().numpy(), top_5_pred)]).astype(
+                        int).mean()
+
+                    print(f'Step: {step}, Loss: {batch_loss}, Acc: {batch_acc}, Top 5 Acc: {top_5_acc}')
 
     def predict(self, src: torch.LongTensor, mask: torch.BoolTensor, task: DraftBertTasks,
                 **predict_kwargs):

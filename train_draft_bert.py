@@ -20,7 +20,8 @@ if __name__ == '__main__':
     hero_ids = pd.read_json('const/hero_ids.json', orient='records')
     hero_ids = hero_ids.set_index('id')
     file_name = 'tmp/test_matchups_3132749989.pkl'
-    model: DraftBert = DraftBert(embedding_dim=512, n_head=4, n_encoder_layers=4, ff_dim=1024, n_heros=len(hero_ids))
+    model: DraftBert = DraftBert(embedding_dim=128, n_head=4, n_encoder_layers=3, ff_dim=256, n_heros=len(hero_ids),
+                                 out_ff_dim=128)
     print(f'Number of trainable params: {sum(p.numel() for p in model.parameters() if p.requires_grad)}')
 
     try:
@@ -39,17 +40,17 @@ if __name__ == '__main__':
 
     model.cuda()
 
-    train_data = data[:100]
+    train_data = data[:-1000]
     test_data = data[-1000:]
     print(f'Train data shape: {train_data.shape}')
     print(f'Min hero id: {data.min()}, Max hero id: {data.max()}')
-    model.fit(train_data, train_data, DraftBertTasks.DRAFT_PREDICTION, **{'steps': 2000, 'lr': 1.0e-4,
-                                                                          'batch_size': 5000, 'mask_pct': 0.2})
+    model.fit(train_data, train_data, DraftBertTasks.DRAFT_PREDICTION, **{'steps': int(1e6), 'lr': 1.0e-5,
+                                                                          'batch_size': 128, 'mask_pct': 0.1})
 
     all_pred, all_true = [], []
     for i, td in enumerate(test_data):
         td = np.array([td])
-        test_masks = model._gen_random_masks(td, pct=0.2)
+        test_masks = model._gen_random_masks(td, pct=0.1)
         # test_masks = np.array([np.append([False] * ((i+1) % 22), [True] * (22 - ((i+1) % 22)))])
         pred = model.predict(td, test_masks, DraftBertTasks.DRAFT_PREDICTION)
 
@@ -73,3 +74,4 @@ if __name__ == '__main__':
             print(s)
     acc = (np.array(all_pred) == np.array(all_true)).astype(int).mean()
     print(f'test acc: {acc}')
+    torch.save(model, 'draft_bert_pretain.torch')

@@ -31,11 +31,14 @@ def parse_graph_for_mlm_prediction(g: nx.Graph, hero_ids):
     # LabelEncoder makes the hero_ids dense and 0 indexed
     le = LabelEncoder()
     le.fit(hero_ids)
+    CLS = le.classes_.max() + 1
+    SEP = le.classes_.max() + 2
+    MASK = le.classes_.max() + 3
     for edge in tqdm(g.edges(data=True)):
-        heros = np.append(*edge[:2])
-        if 0 in heros:
+        if 0 in edge[0] or 0 in edge[1]:  # One of the teams has an invalid hero ID
             continue
-        heros = le.transform(heros)
+        # Start with a CLS token and separate the teams with a SEP token
+        heros = np.concatenate((CLS, le.transform(edge[0]), SEP, le.transform(edge[1])))
         for _ in range(len(edge[2]['wins'])):
             out.append(heros)
     return np.array(out), le
