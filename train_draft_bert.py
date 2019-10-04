@@ -19,22 +19,22 @@ if __name__ == '__main__':
 
     hero_ids = pd.read_json('const/hero_ids.json', orient='records')
     hero_ids = hero_ids.set_index('id')
-    file_name = 'tmp/test_matchups_3132749989.pkl'
-    model: DraftBert = DraftBert(embedding_dim=128, n_head=4, n_encoder_layers=3, ff_dim=256, n_heros=len(hero_ids),
+    file_name = 'tmp/test_matchups_3135389989.pkl'
+    model: DraftBert = DraftBert(embedding_dim=256, n_head=4, n_encoder_layers=4, ff_dim=256, n_heros=len(hero_ids),
                                  out_ff_dim=128)
     print(f'Number of trainable params: {sum(p.numel() for p in model.parameters() if p.requires_grad)}')
 
     try:
-        with open('data/draft_pretain.pkl', 'rb') as f:
+        with open('data/draft_pretrain.pkl', 'rb') as f:
             data = pickle.load(f)
-        with open('data/draft_pretain_le.pkl', 'rb') as f:
+        with open('data/draft_pretrain_le.pkl', 'rb') as f:
             le = pickle.load(f)
     except FileNotFoundError:
         g = nx.read_gpickle(file_name)
         data, le = parse_graph_for_mlm_prediction(g, hero_ids.index)
-        with open('data/draft_pretain.pkl', 'wb') as f:
+        with open('data/draft_pretrain.pkl', 'wb') as f:
             pickle.dump(data, f)
-        with open('data/draft_pretain_le.pkl', 'wb') as f:
+        with open('data/draft_pretrain_le.pkl', 'wb') as f:
             pickle.dump(le, f)
         del g
 
@@ -44,8 +44,8 @@ if __name__ == '__main__':
     test_data = data[-1000:]
     print(f'Train data shape: {train_data.shape}')
     print(f'Min hero id: {data.min()}, Max hero id: {data.max()}')
-    model.fit(train_data, train_data, DraftBertTasks.DRAFT_PREDICTION, **{'steps': int(1e6), 'lr': 1.0e-5,
-                                                                          'batch_size': 128, 'mask_pct': 0.1})
+    model.fit(train_data, train_data, DraftBertTasks.DRAFT_PREDICTION, **{'steps': int(1e6), 'lr': 1.0e-4,
+                                                                          'batch_size': 1024, 'mask_pct': 0.1})
 
     all_pred, all_true = [], []
     for i, td in enumerate(test_data):
@@ -74,4 +74,4 @@ if __name__ == '__main__':
             print(s)
     acc = (np.array(all_pred) == np.array(all_true)).astype(int).mean()
     print(f'test acc: {acc}')
-    torch.save(model, 'draft_bert_pretain.torch')
+    torch.save(model, 'draft_bert_pretrain_matching.torch')

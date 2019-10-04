@@ -8,6 +8,7 @@ from tqdm import tqdm
 class DraftBertTasks(Enum):
     DRAFT_PREDICTION = 1
     DRAFT_MATCHING = 2
+    WIN_PREDICTION = 3
 
 
 class PositionalEncoding(torch.nn.Module):
@@ -47,11 +48,14 @@ class DraftBert(torch.nn.Module):
         self.layer_norm = torch.nn.LayerNorm(out_ff_dim)
         self.output_layer = torch.nn.Linear(out_ff_dim, n_heros)
 
-        dictionary_size = n_heros + 1 + 1  # + 1 for CLS token and + 1 for MASK
+        # Matching classifier layer
+        self.matching_layer = torch.nn.Linear(embedding_dim, 2)
+
+        dictionary_size = n_heros + 1 + 1 + 1  # + 1 for CLS token, + 1 for SEP token, and + 1 for MASK
         self.PADDING_IDX = dictionary_size - 1
         self.CLS_IDX = dictionary_size - 2
         self.hero_embeddings = torch.nn.Embedding(dictionary_size, embedding_dim, padding_idx=self.PADDING_IDX)
-        self.pe = PositionalEncoding(embedding_dim, 0, max_len=10)
+        self.pe = PositionalEncoding(embedding_dim, 0, max_len=13)
 
     def forward(self, src: torch.LongTensor, mask: torch.BoolTensor):
         """
@@ -84,6 +88,9 @@ class DraftBert(torch.nn.Module):
         x = self.output_layer(x)
         return x
 
+    def get_matching_output(self, x):
+        return self.matching_layer(x)
+
     def _gen_random_masks(self, x: torch.LongTensor, pct=0.1):
         """
 
@@ -91,9 +98,16 @@ class DraftBert(torch.nn.Module):
         :param pct:
         :return:
         """
-        n_masked_idx = int(x.shape[1] * pct)
-        mask = np.append([1] * n_masked_idx, [0] * (x.shape[1] - n_masked_idx))
-        mask = [np.random.permutation(mask) for _ in range(x.shape[0])]
+        n_masked_idx = int((x.shape[1] - 3) * pct)
+        mask = np.append([1] * n_masked_idx, [0] * (x.shape[1] - n_masked_idx - 3))
+        mask = np.array([np.random.permutation(mask) for _ in range(x.shape[0])])
+        zeros = np.zeros((x.shape[0], 1))
+        mask = np.hstack((zeros,
+                          mask[:, :5],
+                          zeros,
+                          mask[:, 5:],
+                          zeros))
+
         mask = torch.BoolTensor(mask)
         return mask
 
@@ -118,15 +132,35 @@ class DraftBert(torch.nn.Module):
         steps = train_kwargs.get('steps', 100)
         mask_pct = train_kwargs.get('mask_pct', 0.1)
         print_iter = train_kwargs.get('print_iter', 100)
+        save_iter = train_kwargs.get('save_iter', 100000)
 
         if task == DraftBertTasks.DRAFT_PREDICTION:
             opt = torch.optim.Adam(self.parameters(), lr=lr)
             N = src.shape[0]
-            loss = torch.nn.CrossEntropyLoss(reduction='mean')
+            mask_loss = torch.nn.CrossEntropyLoss(reduction='mean')
+            matching_loss = torch.nn.CrossEntropyLoss(reduction='mean')
             for step in tqdm(range(steps)):
                 opt.zero_grad()
                 idxs = np.random.choice(N, batch_size)
+
+                # Sample a batch of matchups
                 src_batch, tgt_batch = src[idxs], tgt[idxs]
+
+                # Randomly shuffle the order for each team to avoid sorted bias
+                src_batch_r = src_batch[:, 1:6]
+                src_batch_r = src_batch_r[:, torch.randperm(5)]
+                src_batch_d = src_batch[:, 7:12]
+                src_batch_d = src_batch_d[:, torch.randperm(5)]
+                src_batch[:, 1:6] = src_batch_r
+                src_batch[:, 7:12] = src_batch_d
+
+                # Randomly shuffle the matchups for half the batch
+                is_correct_matchup = np.random.choice([0, 1], batch_size)
+                shuffled_lineups = src_batch[is_correct_matchup == 0, 7:12]
+                shuffled_lineups = shuffled_lineups[torch.randperm(shuffled_lineups.size()[0])]
+                src_batch[is_correct_matchup == 0, 7:12] = shuffled_lineups
+
+                # Generate masks for random heros
                 masks = self._gen_random_masks(src_batch, mask_pct)
 
                 src_batch = src_batch.cuda()
@@ -134,21 +168,26 @@ class DraftBert(torch.nn.Module):
 
                 out = self.forward(src_batch, masks)  # -> shape (batch_size, sequence_length, embedding_dim)
                 to_predict = out[masks]
-                # pred = to_predict.matmul(self.hero_embeddings.weight.T)
-                pred = self.get_masked_output(to_predict)
-                tgt_batch = tgt_batch[masks].cuda()
-                batch_loss = loss(pred, tgt_batch)
+                mask_pred = self.get_masked_output(to_predict)
+                mask_tgt_batch = tgt_batch[masks].cuda()
+                mask_batch_loss = mask_loss(mask_pred, mask_tgt_batch)
+
+                is_correct_pred = self.get_matching_output(out[:, 0, :])
+                is_correct_matchup = torch.LongTensor(is_correct_matchup).cuda()
+                is_correct_loss = matching_loss(is_correct_pred, is_correct_matchup)
+                batch_loss = (mask_batch_loss + is_correct_loss) / 2.
                 batch_loss.backward()
                 opt.step()
 
                 if step == 0 or (step+1) % print_iter == 0:
-                    batch_acc = (pred.detach().cpu().numpy().argmax(1) == tgt_batch.detach().cpu().numpy()).astype(
-                        int).mean()
-                    top_5_pred = np.argsort(pred.detach().cpu().numpy(), axis=1)[:, -5:]
-                    top_5_acc = np.array([t in p for t, p in zip(tgt_batch.detach().cpu().numpy(), top_5_pred)]).astype(
-                        int).mean()
+                    batch_acc = (mask_pred.detach().cpu().numpy().argmax(1) == mask_tgt_batch.detach().cpu().numpy()).astype(int).mean()
+                    top_5_pred = np.argsort(mask_pred.detach().cpu().numpy(), axis=1)[:, -5:]
+                    top_5_acc = np.array([t in p for t, p in zip(mask_tgt_batch.detach().cpu().numpy(), top_5_pred)]).astype(int).mean()
+                    matching_acc = (is_correct_pred.detach().cpu().numpy().argmax(1) == is_correct_matchup.detach().cpu().numpy()).astype(int).mean()
 
-                    print(f'Step: {step}, Loss: {batch_loss}, Acc: {batch_acc}, Top 5 Acc: {top_5_acc}')
+                    print(f'Step: {step}, Loss: {batch_loss}, Acc: {batch_acc}, Top 5 Acc: {top_5_acc}, Matching Acc: {matching_acc}')
+                if (step+1) % save_iter == 0:
+                    torch.save(self, f'draft_bert_pretrain_checkpoint_{step}.torch')
 
     def predict(self, src: torch.LongTensor, mask: torch.BoolTensor, task: DraftBertTasks,
                 **predict_kwargs):
