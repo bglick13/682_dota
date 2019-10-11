@@ -10,3 +10,5 @@ secret.py
 *.pkl
 
 *.torch
+
+*.pickle

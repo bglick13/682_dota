@@ -57,6 +57,14 @@ class DraftBert(torch.nn.Module):
         self.hero_embeddings = torch.nn.Embedding(dictionary_size, embedding_dim, padding_idx=self.PADDING_IDX)
         self.pe = PositionalEncoding(embedding_dim, 0, max_len=13)
 
+    def embed_lineup(self, lineup):
+        if isinstance(lineup, (list, np.ndarray)):
+            lineup = torch.LongTensor(lineup)
+        if len(lineup.shape) == 1:
+            lineup = lineup.unsqueeze(0)
+        lineup = lineup.cuda()
+        return self.hero_embeddings(lineup)
+
     def forward(self, src: torch.LongTensor, mask: torch.BoolTensor):
         """
 

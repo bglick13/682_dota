@@ -45,3 +45,12 @@ def parse_graph_for_mlm_prediction(g: nx.Graph, hero_ids):
         for _ in range(len(edge[2]['wins'])):
             out.append(heros)
     return np.array(out), le
+
+
+def gen_clustering_dataset(g: nx.Graph, model, le, n_nodes):
+    nodes = np.array(list(g.nodes()))
+    nodes = nodes[np.random.choice(range(len(nodes)), n_nodes)]
+    embedded_repr = np.array([le.transform(n) for n in nodes if 0 not in n])
+    embedded_repr = model.embed_lineup(embedded_repr)
+    embedded_repr = embedded_repr.detach().cpu().numpy()
+    return nodes, embedded_repr
