@@ -27,6 +27,8 @@ if __name__ == '__main__':
         with open('all_pick_dataset.pickle', 'wb') as f:
             pickle.dump(dataset, f)
 
+    dataset.hero_ids.to_json('../const/draft_bert_hero_ids.json')
+
     mask_idx = dataset.MASK
     model: DraftBert = DraftBert(embedding_dim=256, n_head=4, n_encoder_layers=4, ff_dim=256,
                                  n_heros=len(dataset.hero_ids), out_ff_dim=128, mask_idx=mask_idx)
