@@ -215,7 +215,7 @@ class DraftBert(torch.nn.Module):
         self.next_hero_output = torch.nn.Sequential(torch.nn.Linear(embedding_dim, out_ff_dim),
                                                    torch.nn.LayerNorm(out_ff_dim),
                                                    Swish(),
-                                                   torch.nn.Linear(out_ff_dim, 2))
+                                                   torch.nn.Linear(out_ff_dim, n_heros))
 
         dictionary_size = n_heros
         self.mask_idx = mask_idx
