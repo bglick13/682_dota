@@ -2,6 +2,7 @@ from abc import ABC
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
 import pandas as pd
+from dotaservice.protos.DotaService_pb2 import HeroPick
 
 
 class DraftEnv(ABC):

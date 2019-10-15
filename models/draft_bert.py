@@ -311,7 +311,7 @@ class DraftBert(torch.nn.Module):
                 mask_batch = batch[2]
 
                 # Randomly shuffle the matchups for half the batch
-                is_correct_matchup = np.random.choice([0, 1], batch_size)
+                is_correct_matchup = np.random.choice([0, 1], src_batch.shape[0])
                 shuffled_lineups = src_batch[is_correct_matchup == 0, :][:, [16, 17, 20, 21, 23]]
                 shuffled_lineups = shuffled_lineups[torch.randperm(shuffled_lineups.size()[0])]
                 src_batch[is_correct_matchup == 0, :][:, [16, 17, 20, 21, 23]] = shuffled_lineups
