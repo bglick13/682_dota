@@ -78,6 +78,7 @@ class AllPickDataset(Dataset):
             for _, w in enumerate(edge[2]['wins']):
                 w = self.le.transform(w)
                 self.matchups.append(heros)
+                # 1 if Radiant victory, 0 if Dire victory
                 if np.sum(w == r) == 5:
                     self.wins.append(1)
                 else:
