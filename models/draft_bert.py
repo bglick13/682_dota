@@ -1,14 +1,151 @@
 import torch
 from torch.functional import F
+from torch.utils.data import Dataset, DataLoader
 from enum import Enum
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
+import networkx as nx
+from sklearn.preprocessing import LabelEncoder
+from typing import Union
+import copy
 
+
+pd.set_option('display.max_rows', 200)
 
 class DraftBertTasks(Enum):
     DRAFT_PREDICTION = 1
     DRAFT_MATCHING = 2
     WIN_PREDICTION = 3
+
+
+class AllPickDataset(Dataset):
+    def __init__(self, g: Union[nx.Graph, str], hero_ids: pd.DataFrame, test_pct: float = 0, mask_pct=0.1):
+        if isinstance(g, nx.Graph):
+            g = g
+        elif isinstance(g, str):
+            g = nx.read_gpickle(g)
+
+        if 'MASK' not in hero_ids['name']:
+            hero_ids = hero_ids.append({'id': -1, 'name': 'MASK'}, ignore_index=True)
+        if 'SEP' not in hero_ids['name']:
+            hero_ids = hero_ids.append({'id': -2, 'name': 'SEP'}, ignore_index=True)
+        if 'CLS' not in hero_ids['name']:
+            hero_ids = hero_ids.append({'id': -3, 'name': 'CLS'}, ignore_index=True)
+
+        self.hero_ids = hero_ids
+        self.le = LabelEncoder()
+        self.hero_ids['model_id'] = self.le.fit_transform(self.hero_ids['id'])
+        self.test_pct = test_pct
+        self.mask_pct = mask_pct
+
+        self.MASK = self.hero_ids.loc[self.hero_ids['id'] == -1, 'model_id'].values[0]
+        self.SEP = self.hero_ids.loc[self.hero_ids['id'] == -2, 'model_id'].values[0]
+        self.CLS = self.hero_ids.loc[self.hero_ids['id'] == -3, 'model_id'].values[0]
+
+        print(self.hero_ids)
+
+        self.matchups = []
+        self.wins = []
+
+        for edge in tqdm(g.edges(data=True)):
+            r = edge[0]
+            d = edge[1]
+            if 0 in r or 0 in d:  # One of the teams has an invalid hero ID
+                continue
+            # Start with a CLS token and separate the teams with a SEP token
+            r = self.le.transform(r)
+            d = self.le.transform(d)
+            heros = np.concatenate(([self.CLS],  # Always start with the CLS token - index [0]
+                                    # Radiant - starts at index 1
+                                    np.ones(3) * self.MASK,  # First wave of 3 bans - indices [1, 2, 3]
+                                    r[:2],  # First two picks - indices [4, 5]
+                                    np.ones(2) * self.MASK,  # Two more bans - indices [6, 7]
+                                    r[2:4],  # Two more picks - indices [8, 9]
+                                    np.ones(1) * self.MASK,  # Final ban - index [10]
+                                    r[4:5],  # Final pick - index [11]
+                                    [self.SEP],  # Index [12]
+
+                                    # Dire - starts at index 13
+                                    np.ones(3) * self.MASK,  # First wave of 3 bans - indices [13, 14, 15]
+                                    d[:2],  # First two picks - indices [16, 17]
+                                    np.ones(2) * self.MASK,  # Two more bans - indices [18, 19]
+                                    d[2:4],  # Two more picks - indices [20, 21]
+                                    np.ones(1) * self.MASK,  # Final ban - index [22]
+                                    d[4:5],  # Final pick - index [23]
+                                    [self.SEP]  # Index [24])
+                                    ))
+            for _, w in enumerate(edge[2]['wins']):
+                w = self.le.transform(w)
+                self.matchups.append(heros)
+                if np.sum(w == r) == 5:
+                    self.wins.append(1)
+                else:
+                    self.wins.append(0)
+        del g
+        self.matchups = np.array(self.matchups)
+        self.wins = np.array(self.wins)
+
+        if self.test_pct > 0:
+            self.test_idxs = np.random.choice(range(len(self.matchups)), int(len(self.matchups) * self.test_pct), replace=False)
+            self.train_idxs = np.array(list(set(range(len(self.matchups))) - set(self.test_idxs)))
+
+        else:
+            self.test_idxs = []
+            self.train_idxs = np.arange(len(self.matchups))
+        self.train = True
+
+    def _gen_random_masks(self):
+        """
+
+        :param x: shape (batch_size, sequence_length, 1)
+        :param pct:
+        :return:
+        """
+        n_masked_idx = int(10 * self.mask_pct)
+        mask = np.append([1] * n_masked_idx, [0] * (10 - n_masked_idx))
+        mask = np.random.permutation(mask)
+        mask = np.concatenate((np.zeros(1),
+                               np.zeros(3),
+                               mask[:2],
+                               np.zeros(2),
+                               mask[2:4],
+                               np.zeros(1),
+                               mask[4:5],
+                               np.zeros(1),
+                               np.zeros(3),
+                               mask[5:7],
+                               np.zeros(2),
+                               mask[7:9],
+                               np.zeros(1),
+                               mask[9:],
+                               np.zeros(1)))
+
+        mask = torch.BoolTensor(mask)
+        return mask
+
+    def __getitem__(self, index):
+        mask = self._gen_random_masks()
+        if self.train:
+            index = self.train_idxs[index]
+        else:
+            index = self.test_idxs[index]
+        m = self.matchups[index]
+        r = np.random.permutation(m[[4, 5, 8, 9, 11]])
+        d = np.random.permutation(m[[16, 17, 20, 21, 23]])
+        m[[4, 5, 8, 9, 11]] = r
+        m[[16, 17, 20, 21, 23]] = d
+
+        return (torch.LongTensor(m),
+                torch.LongTensor([self.wins[index]]),
+                mask)
+
+
+    def __len__(self):
+        if self.train:
+            return len(self.train_idxs)
+        else:
+            return len(self.test_idxs)
 
 
 class PositionalEncoding(torch.nn.Module):
@@ -32,8 +169,20 @@ class PositionalEncoding(torch.nn.Module):
         return self.dropout(x)
 
 
+def swish(x):
+    return F.sigmoid(x) * x
+
+
+class Swish(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        return F.sigmoid(x) * x
+
+
 class DraftBert(torch.nn.Module):
-    def __init__(self, embedding_dim, ff_dim, n_head, n_encoder_layers, n_heros, out_ff_dim):
+    def __init__(self, embedding_dim, ff_dim, n_head, n_encoder_layers, n_heros, out_ff_dim, mask_idx):
         super().__init__()
         self.embedding_dim = embedding_dim
         self.n_head = n_head
@@ -44,18 +193,33 @@ class DraftBert(torch.nn.Module):
         self.encoder = torch.nn.TransformerEncoder(self.encoder_layer, n_encoder_layers)
 
         # Masked output layers
-        self.dense_layer = torch.nn.Linear(embedding_dim, out_ff_dim)
-        self.layer_norm = torch.nn.LayerNorm(out_ff_dim)
-        self.output_layer = torch.nn.Linear(out_ff_dim, n_heros)
+        self.masked_output = torch.nn.Sequential(torch.nn.Linear(embedding_dim, out_ff_dim),
+                                                 torch.nn.LayerNorm(out_ff_dim),
+                                                 Swish(),
+                                                 torch.nn.Linear(out_ff_dim, n_heros))
 
-        # Matching classifier layer
-        self.matching_layer = torch.nn.Linear(embedding_dim, 2)
+        # Matching classifier layer - Only used for pretraining
+        self.matching_output = torch.nn.Sequential(torch.nn.Linear(embedding_dim, out_ff_dim),
+                                                   torch.nn.LayerNorm(out_ff_dim),
+                                                   Swish(),
+                                                   torch.nn.Linear(out_ff_dim, 2))
+        # self.matching_layer = torch.nn.Linear(embedding_dim, 2)
 
-        dictionary_size = n_heros + 1 + 1 + 1  # + 1 for CLS token, + 1 for SEP token, and + 1 for MASK
-        self.PADDING_IDX = dictionary_size - 1
-        self.CLS_IDX = dictionary_size - 2
-        self.hero_embeddings = torch.nn.Embedding(dictionary_size, embedding_dim, padding_idx=self.PADDING_IDX)
-        self.pe = PositionalEncoding(embedding_dim, 0, max_len=13)
+        # Win classifier/Value head
+        self.win_output = torch.nn.Sequential(torch.nn.Linear(embedding_dim, out_ff_dim),
+                                                   torch.nn.LayerNorm(out_ff_dim),
+                                                   Swish(),
+                                                   torch.nn.Linear(out_ff_dim, 2))
+        # Next hero prediction/Policy head
+        self.next_hero_output = torch.nn.Sequential(torch.nn.Linear(embedding_dim, out_ff_dim),
+                                                   torch.nn.LayerNorm(out_ff_dim),
+                                                   Swish(),
+                                                   torch.nn.Linear(out_ff_dim, 2))
+
+        dictionary_size = n_heros
+        self.mask_idx = mask_idx
+        self.hero_embeddings = torch.nn.Embedding(dictionary_size, embedding_dim, padding_idx=int(mask_idx))
+        self.pe = PositionalEncoding(embedding_dim, 0, max_len=25)
 
     def embed_lineup(self, lineup):
         if isinstance(lineup, (list, np.ndarray)):
@@ -75,7 +239,7 @@ class DraftBert(torch.nn.Module):
         """
 
         # First, we encode the src sequence into the latent hero representation
-        src[mask] = self.PADDING_IDX  # Set the masked values to the embedding pad idx
+        src[mask] = torch.LongTensor([self.mask_idx] * src.shape[0]).cuda()  # Set the masked values to the embedding pad idx
         src = self.hero_embeddings(src)
         src = src + np.sqrt(self.embedding_dim)
         src = self.pe(src)
@@ -90,14 +254,16 @@ class DraftBert(torch.nn.Module):
         return out
 
     def get_masked_output(self, x):
-        x = self.dense_layer(x)
-        x = self.layer_norm(x)
-        x = F.relu(x)
-        x = self.output_layer(x)
-        return x
+        return self.masked_output(x)
 
     def get_matching_output(self, x):
-        return self.matching_layer(x)
+        return self.matching_output(x)
+
+    def get_next_hero_output(self, x):
+        return self.next_hero_output(x)
+
+    def get_win_output(self, x):
+        return self.win_output(x)
 
     def _gen_random_masks(self, x: torch.LongTensor, pct=0.1):
         """
@@ -118,6 +284,76 @@ class DraftBert(torch.nn.Module):
 
         mask = torch.BoolTensor(mask)
         return mask
+
+    def pretrain_all_pick(self, dataset: AllPickDataset, **train_kwargs):
+        self.train()
+        lr = train_kwargs.get('lr', 0.001)
+        batch_size = train_kwargs.get('batch_size', 512)
+        epochs = train_kwargs.get('epochs', 100)
+        mask_pct = train_kwargs.get('mask_pct', 0.1)
+        print_iter = train_kwargs.get('print_iter', 100)
+        save_iter = train_kwargs.get('save_iter', 100000)
+
+        dataset.mask_pct = mask_pct
+        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4)
+
+        opt = torch.optim.Adam(self.parameters(), lr=lr)
+        mask_loss = torch.nn.CrossEntropyLoss(reduction='mean')
+        matching_loss = torch.nn.CrossEntropyLoss(reduction='mean')
+        win_loss = torch.nn.CrossEntropyLoss(reduction='mean')
+        for epoch in tqdm(range(epochs)):
+            for i, batch in tqdm(enumerate(dataloader)):
+                opt.zero_grad()
+
+                src_batch = batch[0]
+                tgt_batch = copy.deepcopy(src_batch)
+                win_batch = batch[1]
+                mask_batch = batch[2]
+
+                # Randomly shuffle the matchups for half the batch
+                is_correct_matchup = np.random.choice([0, 1], batch_size)
+                shuffled_lineups = src_batch[is_correct_matchup == 0, :][:, [16, 17, 20, 21, 23]]
+                shuffled_lineups = shuffled_lineups[torch.randperm(shuffled_lineups.size()[0])]
+                src_batch[is_correct_matchup == 0, :][:, [16, 17, 20, 21, 23]] = shuffled_lineups
+
+                src_batch = src_batch.cuda()
+                mask_batch = mask_batch.cuda()
+
+                out = self.forward(src_batch, mask_batch)  # -> shape (batch_size, sequence_length, embedding_dim)
+                to_predict = out[mask_batch]
+                mask_pred = self.get_masked_output(to_predict)
+                mask_tgt_batch = tgt_batch[mask_batch].cuda()
+                mask_batch_loss = mask_loss(mask_pred, mask_tgt_batch)
+
+                is_correct_pred = self.get_matching_output(out[:, 0, :])
+                is_correct_matchup = torch.LongTensor(is_correct_matchup).cuda()
+                is_correct_loss = matching_loss(is_correct_pred, is_correct_matchup)
+
+                win_pred = self.get_win_output(out[:, 0, :])
+                win_batch = win_batch.cuda()
+                batch_win_loss = win_loss(win_pred, win_batch.squeeze())
+
+                batch_loss = (mask_batch_loss + is_correct_loss + batch_win_loss) / 3.
+                batch_loss.backward()
+                opt.step()
+
+                if i == 0 or (i + 1) % print_iter == 0:
+                    batch_acc = (
+                                mask_pred.detach().cpu().numpy().argmax(1) == mask_tgt_batch.detach().cpu().numpy()).astype(
+                        int).mean()
+                    top_5_pred = np.argsort(mask_pred.detach().cpu().numpy(), axis=1)[:, -5:]
+                    top_5_acc = np.array(
+                        [t in p for t, p in zip(mask_tgt_batch.detach().cpu().numpy(), top_5_pred)]).astype(int).mean()
+                    matching_acc = (is_correct_pred.detach().cpu().numpy().argmax(
+                        1) == is_correct_matchup.detach().cpu().numpy()).astype(int).mean()
+
+                    win_acc = (win_pred.detach().cpu().numpy().argmax(
+                        1) == win_batch.squeeze().detach().cpu().numpy()).astype(int).mean()
+
+                    print(
+                        f'Epoch: {epoch}, Step: {i}, Loss: {batch_loss}, Acc: {batch_acc}, Top 5 Acc: {top_5_acc},'
+                        f'Matching Acc: {matching_acc}, Win Acc: {win_acc}')
+            torch.save(self, f'draft_bert_pretrain__allpick_checkpoint_{epoch}.torch')
 
     def fit(self, src: torch.LongTensor, tgt: torch.LongTensor, task: DraftBertTasks, **train_kwargs):
         """

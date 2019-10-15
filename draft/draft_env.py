@@ -4,12 +4,14 @@ from sklearn.preprocessing import LabelEncoder
 import pandas as pd
 
 
-class Draft(ABC):
-    def __init__(self, heros: pd.DataFrame):
+class DraftEnv(ABC):
+    def __init__(self, heros: pd.DataFrame, port: int):
         self.heros = heros
-        self.SEP = heros.loc[heros['name'] == 'sep', 'model_id']
-        self.MASK = heros.loc[heros['name'] == 'mask', 'model_id']
-        self.CLS = heros.loc[heros['name'] == 'cls', 'model_id']
+        self.port = port
+
+        self.SEP = heros.loc[heros['name'] == 'SEP', 'model_id']
+        self.MASK = heros.loc[heros['name'] == 'MASK', 'model_id']
+        self.CLS = heros.loc[heros['name'] == 'CLS', 'model_id']
 
         self.draft_order = None
 
@@ -48,8 +50,18 @@ class Draft(ABC):
     def dire(self):
         return self._current_state[16, 17, 20, 21, 23]
 
+    @property
+    def radiant_dota_ids(self):
+        return self.heros.loc[self.heros['model_id'].isin(self.radiant), 'id'].values
+
+    @property
+    def dire_dota_ids(self):
+        return self.heros.loc[self.heros['model_id'].isin(self.dire), 'id'].values
+
+    @property
     def get_legal_moves(self):
-        return set(self.heros['model_id'].values) - set(self._current_state)
+        return np.array(list((set(self.heros.loc[~self.heros['name'].isin(['MASK', 'SEP', 'CLS']), 'model_id'].values) -
+                              set(self._current_state))))
 
     def pick(self, hero_id):
         self._current_state[self.draft_order[self.next_pick_index]] = hero_id
@@ -59,8 +71,12 @@ class Draft(ABC):
         self.next_pick_index = 0
         return np.ones(25) * self.MASK
 
+    def get_winner(self):
+        assert self.done, 'Draft is not complete'
+        # TODO: Incorporate DotaService and DotaClient to simulate the matchup
 
-class AllPick(Draft):
+
+class AllPickEnv(DraftEnv):
     def __init__(self, heros: pd.DataFrame):
         super().__init__(heros)
         self.draft_order = [4,
@@ -114,7 +130,7 @@ class AllPick(Draft):
             return f'Radiant: {radiant}\nDire: {dire}'
 
 
-class CaptainMode(Draft):
+class CaptainModeEnv(DraftEnv):
     def __init__(self, heros: pd.DataFrame):
         super().__init__(heros)
         self.draft_order = [0, 11, 1, 12, 2, 13,
