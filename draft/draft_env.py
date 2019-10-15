@@ -16,9 +16,9 @@ class DraftEnv(ABC):
         self.heros = heros
         self.port = port
 
-        self.SEP = heros.loc[heros['name'] == 'SEP', 'model_id']
-        self.MASK = heros.loc[heros['name'] == 'MASK', 'model_id']
-        self.CLS = heros.loc[heros['name'] == 'CLS', 'model_id']
+        self.SEP = heros.loc[heros['name'] == 'SEP', 'model_id'].values[0]
+        self.MASK = heros.loc[heros['name'] == 'MASK', 'model_id'].values[0]
+        self.CLS = heros.loc[heros['name'] == 'CLS', 'model_id'].values[0]
 
         self.draft_order = None
 
@@ -118,7 +118,7 @@ class DraftEnv(ABC):
 
         # game = Game(dota_service=dota_service, max_dota_time=max_dota_time)
         # UUID in game.dota_service.dota_game.game_id
-        game_id = str(datetime.now().strftime('%b%d_%H-%M-%S'))
+        game_id = str(datetime.datetime.now().strftime('%b%d_%H-%M-%S'))
 
         config = self._get_game_config()
 
@@ -192,11 +192,10 @@ class AllPickEnv(DraftEnv):
                               )
 
     def __str__(self):
-        if self.heros:
-            radiant = self.heros.loc[self.heros['model_id'].isin(self.radiant), 'localized_name']
-            dire = self.heros.loc[self.heros['model_id'].isin(self.dire), 'localized_name']
+        radiant = self.heros.loc[self.heros['model_id'].isin(self.radiant), 'localized_name']
+        dire = self.heros.loc[self.heros['model_id'].isin(self.dire), 'localized_name']
 
-            return f'Radiant: {radiant}\nDire: {dire}'
+        return f'Radiant: {radiant}\nDire: {dire}'
 
 
 class CaptainModeEnv(DraftEnv):

@@ -6,7 +6,7 @@ import asyncio
 
 if __name__ == '__main__':
     port = 13337
-    hero_ids = pd.read_json('../const/hero_ids.json', orient='records')
+    hero_ids = pd.read_json('../const/draft_bert_hero_ids.json', orient='records')
     draft = AllPickEnv(hero_ids, port)
     while not draft.done:
         moves = draft.get_legal_moves
