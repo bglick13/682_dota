@@ -11,6 +11,10 @@ from dotaservice.protos.DotaService_grpc import DotaServiceStub
 from dotaservice.protos.dota_shared_enums_pb2 import DOTA_GAMEMODE_ALL_DRAFT
 
 
+pd.set_option('display.max_rows', 200)
+pd.set_option('display.max_columns', 100)
+
+
 class DraftEnv(ABC):
     def __init__(self, heros: pd.DataFrame, port: int):
         self.heros = heros
@@ -77,6 +81,7 @@ class DraftEnv(ABC):
 
     def pick(self, hero_id):
         self._current_state[self.draft_order[self.next_pick_index]] = hero_id
+
         self.next_pick_index += 1
 
     def reset(self):
@@ -118,7 +123,8 @@ class DraftEnv(ABC):
 
         # game = Game(dota_service=dota_service, max_dota_time=max_dota_time)
         # UUID in game.dota_service.dota_game.game_id
-        game_id = str(datetime.datetime.now().strftime('%b%d_%H-%M-%S'))
+        game_id = str(datetime.datetime.now().strftime('%b%d_%H-%M-%S-%f'))
+        # game_id = str(time.time())
 
         config = self._get_game_config()
 
@@ -201,12 +207,12 @@ class AllPickEnv(DraftEnv):
 class CaptainModeEnv(DraftEnv):
     def __init__(self, heros: pd.DataFrame, port: int):
         super().__init__(heros, port)
-        self.draft_order = [0, 11, 1, 12, 2, 13,
-                            3, 14, 4, 15,
-                            5, 16, 6, 17,
-                            7, 18, 8, 19,
-                            9, 20,
-                            10, 21]
+        self.draft_order = [1, 13, 2, 14, 3, 15,
+                            4, 16, 5, 17,
+                            6, 18, 7, 19,
+                            8, 20, 9, 21,
+                            10, 22,
+                            11, 23]
 
     @property
     def player_turn(self):
@@ -220,5 +226,5 @@ class CaptainModeEnv(DraftEnv):
 
     @property
     def done(self):
-        return self.next_pick_index >= 24
+        return self.next_pick_index > 21
 

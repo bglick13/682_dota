@@ -2,6 +2,7 @@ import multiprocessing
 import numpy as np
 from models.draft_bert import DraftBert
 from models.draft_agent import DraftAgent
+import time
 
 
 class DraftArena:
@@ -11,13 +12,21 @@ class DraftArena:
         self.n_jobs = n_jobs
 
     def self_play(self, n_games):
+        def collect_result(result):
+            results.append(result)
+
         all_states, all_actions, all_values, all_winners = [], [], [], []
         for set_of_games in range(n_games//self.n_jobs):
             pool = multiprocessing.Pool(self.n_jobs)
-            results = pool.map_async(self.agent.self_play, self.envs)
+            results = []
+            p = []
+            for i in range(self.n_jobs):
+                p.append(pool.apply_async(self.agent.self_play, (self.envs[i], ), callback=collect_result))
+            for job in p:
+                job.get()
+                time.sleep(1)
             pool.close()
             pool.join()
-            results = [r.get() for r in results]
             for r in results:
                 all_states.extend(r[0])
                 all_actions.extend(r[1])

@@ -8,7 +8,42 @@ from draft.draft_env import AllPickEnv, CaptainModeEnv
 from typing import Union
 
 
-class DraftAgent(torch.nn.Module):
+class DummyAgent(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.memory = deque(maxlen=1000)
+
+    def self_play(self, env: Union[AllPickEnv, CaptainModeEnv]):
+        """
+        Generates training data of (s, p, v) triplets by playing against itself and storing the results
+
+        :return:
+        """
+        print(f'starting self-play with env on port: {env.port}')
+
+        env.reset()
+        states, actions = [], []
+        while not env.done:
+            s = env.state
+            legal_moves = env.get_legal_moves
+            a = np.random.choice(legal_moves, 1)
+
+            states.append(s)
+            actions.append(a)
+
+            env.pick(a)
+        loop = asyncio.get_event_loop()
+        coro = env.get_winner()
+        winner = loop.run_until_complete(coro)
+        values = np.zeros_like(states)
+        if winner == 1:
+            values[env.draft_order <= 11] = 1
+        else:
+            values[env.draft_order > 11] = 1
+        return states, actions, values, winner
+
+
+class DraftAgent(DummyAgent):
     def __init__(self, model: DraftBert, memory_size):
         super().__init__()
         self.model = model
@@ -23,6 +58,7 @@ class DraftAgent(torch.nn.Module):
 
         :return:
         """
+        print(f'starting self-play with env on port: {env.port}')
         env.reset()
         states, actions = [], []
         while not env.done:
@@ -74,35 +110,3 @@ class DraftAgent(torch.nn.Module):
         :return:
         """
         pass
-
-
-class DummyAgent(DraftAgent):
-    def __init__(self):
-        super().__init__(None, 1000)
-
-    def self_play(self, env: Union[AllPickEnv, CaptainModeEnv]):
-        """
-        Generates training data of (s, p, v) triplets by playing against itself and storing the results
-
-        :return:
-        """
-        env.reset()
-        states, actions = [], []
-        while not env.done:
-            s = env.state
-            legal_moves = env.get_legal_moves
-            a = np.random.choice(legal_moves, 1)
-
-            states.append(s)
-            actions.append(a)
-
-            env.pick(a)
-        loop = asyncio.get_event_loop()
-        coro = env.get_winner()
-        winner = loop.run_until_complete(coro)
-        values = np.zeros_like(states)
-        if winner == 1:
-            values[env.draft_order <= 11] = 1
-        else:
-            values[env.draft_order > 11] = 1
-        return states, actions, values, winner
