@@ -115,9 +115,8 @@ class DraftEnv(ABC):
         config.game_id = game_id
         response = await asyncio.wait_for(dota_service.reset(config), timeout=120)
 
-    async def get_winner(self):
+    def get_winner(self):
         assert self.done, 'Draft is not complete'
-        game_config = self._get_game_config()
         channel_dota = Channel('127.0.0.1', self.port, loop=asyncio.get_event_loop())
         dota_service = DotaServiceStub(channel_dota)
 
@@ -128,10 +127,12 @@ class DraftEnv(ABC):
 
         config = self._get_game_config()
         print(f"Calling play for game id: {game_id} for port {self.port}")
-        try:
-            await self.play(dota_service=dota_service, config=config, game_id=game_id)
-        except:
-            channel_dota.close()
+        print(channel_dota.__dict__)
+        # try:
+        self.play(dota_service=dota_service, config=config, game_id=game_id)
+        # except Exception as e:
+        #     print(e)
+            # channel_dota.close()
         log_file_path = f'../{game_id}/bots/console.log'
         time.sleep(10)
         with open(log_file_path, 'r') as f:

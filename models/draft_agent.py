@@ -14,7 +14,7 @@ class DummyAgent(torch.nn.Module):
         self.memory = deque(maxlen=1000)
 
     @staticmethod
-    async def self_play(env: Union[AllPickEnv, CaptainModeEnv]):
+    def self_play(env: Union[AllPickEnv, CaptainModeEnv]):
         """
         Generates training data of (s, p, v) triplets by playing against itself and storing the results
 
@@ -33,9 +33,8 @@ class DummyAgent(torch.nn.Module):
             actions.append(a)
 
             env.pick(a)
-        loop = asyncio.get_event_loop()
-        coro = env.get_winner()
-        winner = await coro()
+        # loop = asyncio.get_event_loop()
+        winner = env.get_winner()
         values = np.zeros_like(states)
         if winner == 1:
             values[env.draft_order <= 11] = 1
