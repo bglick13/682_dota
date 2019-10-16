@@ -1,3 +1,4 @@
+import os
 from abc import ABC
 import asyncio
 import time
@@ -10,16 +11,21 @@ from dotaservice.protos.DotaService_pb2 import *
 from dotaservice.protos.DotaService_grpc import DotaServiceStub
 from dotaservice.protos.dota_shared_enums_pb2 import DOTA_GAMEMODE_ALL_DRAFT
 import uuid
+import pickle
+import docker
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+
+
+client = docker.from_env()
 
 pd.set_option('display.max_rows', 200)
 pd.set_option('display.max_columns', 100)
 
 
 class DraftEnv(ABC):
-    def __init__(self, heros: pd.DataFrame, port: int):
+    def __init__(self, heros: pd.DataFrame, port):
         self.heros = heros
         self.port = port
-
         self.SEP = heros.loc[heros['name'] == 'SEP', 'model_id'].values[0]
         self.MASK = heros.loc[heros['name'] == 'MASK', 'model_id'].values[0]
         self.CLS = heros.loc[heros['name'] == 'CLS', 'model_id'].values[0]
@@ -89,14 +95,18 @@ class DraftEnv(ABC):
         return np.ones(25) * self.MASK
 
     def _get_game_config(self):
-        radiant_dota_ids = self.heros.loc[self.heros['model_id'].isin(self.radiant), 'id']
-        dire_dota_ids = self.heros.loc[self.heros['model_id'].isin(self.dire), 'id']
+        radiant_dota_ids = self.heros.loc[self.heros['model_id'].isin(self.radiant), 'id'].values
+        dire_dota_ids = self.heros.loc[self.heros['model_id'].isin(self.dire), 'id'].values
         hero_picks = []
-
-        for hero in radiant_dota_ids:
-            hero_picks.append(HeroPick(team_id=TEAM_RADIANT, hero_id=hero, control_mode=HERO_CONTROL_MODE_DEFAULT))
-        for hero in dire_dota_ids:
-            hero_picks.append(HeroPick(team_id=TEAM_DIRE, hero_id=hero, control_mode=HERO_CONTROL_MODE_DEFAULT))
+        try:
+            for hero in radiant_dota_ids:
+                hero_picks.append(HeroPick(team_id=TEAM_RADIANT, hero_id=hero, control_mode=HERO_CONTROL_MODE_DEFAULT))
+            for hero in dire_dota_ids:
+                hero_picks.append(HeroPick(team_id=TEAM_DIRE, hero_id=hero, control_mode=HERO_CONTROL_MODE_DEFAULT))
+        except ValueError as e:
+            print(e)
+            print(radiant_dota_ids)
+            print(dire_dota_ids)
 
         # TODO generate game_id here so it's easily accessible
         return GameConfig(
@@ -107,18 +117,31 @@ class DraftEnv(ABC):
             hero_picks=hero_picks,
         )
 
-    async def play(self, dota_service, config, game_id):
+    def play(self, config, game_id):
 
         # Reset and obtain the initial observation. This dictates who we are controlling,
         # this is done before the player definition, because there might be humand playing
         # that take up bot positions.
+        os.mkdir(f'../{game_id}')
         config.game_id = game_id
-        response = await asyncio.wait_for(dota_service.reset(config), timeout=120)
+        with open(f'../{game_id}/config.pickle', 'wb') as f:
+            pickle.dump(config, f)
+        print('calling reset')
+        client = docker.from_env()
+        container = client.containers.run('dotaservice',
+                              volumes={f'/Users/benjaminglickenhaus/PycharmProjects/682_project/{game_id}': {'bind':'/tmp',
+                                                                                                             'mode': 'rw'}},
+                              ports={f'{self.port}/tcp': self.port},
+                              detach=True)
+        print('launched container')
+        time.sleep(10)
+        print(container.logs())
+        # response = dota_service.reset(config)
 
     def get_winner(self):
         assert self.done, 'Draft is not complete'
-        channel_dota = Channel('127.0.0.1', self.port, loop=asyncio.get_event_loop())
-        dota_service = DotaServiceStub(channel_dota)
+        # channel_dota = Channel('127.0.0.1', self.port, loop=asyncio.get_event_loop())
+        # dota_service = DotaServiceStub(channel_dota)
 
         # game = Game(dota_service=dota_service, max_dota_time=max_dota_time)
         # UUID in game.dota_service.dota_game.game_id
@@ -126,14 +149,14 @@ class DraftEnv(ABC):
         game_id = str(time.time())
 
         config = self._get_game_config()
-        print(f"Calling play for game id: {game_id} for port {self.port}")
-        print(channel_dota.__dict__)
+        print(f"Calling play for game id: {game_id}")
+        # print(channel_dota.__dict__)
         # try:
-        self.play(dota_service=dota_service, config=config, game_id=game_id)
+        self.play(config=config, game_id=game_id)
         # except Exception as e:
         #     print(e)
             # channel_dota.close()
-        log_file_path = f'../{game_id}/bots/console.log'
+        log_file_path = f'../{game_id}/{game_id}/bots/console.log'
         time.sleep(10)
         with open(log_file_path, 'r') as f:
             print(f'Opened file: {log_file_path}')
@@ -145,12 +168,12 @@ class DraftEnv(ABC):
                     f.seek(where)
                 else:
                     if 'Building' in line:
-                        print(f'Port {self.port}: {line}')
+                        print(f'{line}')
                     if 'npc_dota_badguys_fort destroyed' in line:
-                        print(f'Port {self.port}: Radiant Victory')
+                        print(f'Radiant Victory')
                         return 1
                     elif 'npc_dota_goodguys_fort destroyed' in line:
-                        print(f'Port {self.port}: Dire Victory')
+                        print(f'Dire Victory')
                         return 0
 
     def __str__(self):
@@ -161,8 +184,8 @@ class DraftEnv(ABC):
 
 
 class AllPickEnv(DraftEnv):
-    def __init__(self, heros: pd.DataFrame, port: int):
-        super().__init__(heros, port)
+    def __init__(self, heros: pd.DataFrame):
+        super().__init__(heros)
         self.draft_order = np.array([4,
                             16, 17,
                             5, 8,
@@ -208,7 +231,7 @@ class AllPickEnv(DraftEnv):
 
 
 class CaptainModeEnv(DraftEnv):
-    def __init__(self, heros: pd.DataFrame, port: int):
+    def __init__(self, heros: pd.DataFrame, port):
         super().__init__(heros, port)
         self.draft_order = np.array([1, 13, 2, 14, 3, 15,
                             4, 16, 5, 17,

@@ -9,5 +9,5 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     hero_ids = pd.read_json('../const/draft_bert_hero_ids.json', orient='records')
     agent = DummyAgent()
-    loop.run_until_complete(self_play(agent, hero_ids, 2, 2))
+    self_play(agent, hero_ids, 2, 2)
     print(agent.memory)

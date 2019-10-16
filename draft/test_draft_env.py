@@ -2,6 +2,7 @@ from draft.draft_env import AllPickEnv, CaptainModeEnv
 import numpy as np
 import pandas as pd
 import asyncio
+import pickle
 
 
 if __name__ == '__main__':
@@ -11,10 +12,11 @@ if __name__ == '__main__':
     while not draft.done:
         moves = draft.get_legal_moves
         move = np.random.choice(moves, 1)
-        print(moves)
-        print(move)
+
         draft.pick(move)
     print(draft)
+    # with open('config.pickle', 'wb') as f:
+    #     pickle.dump(draft._get_game_config(), f)
     # loop = asyncio.get_event_loop()
     # coro = draft.get_winner()
     # winner = loop.run_until_complete(coro)

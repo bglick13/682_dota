@@ -14,14 +14,12 @@ class DummyAgent(torch.nn.Module):
         self.memory = deque(maxlen=1000)
 
     @staticmethod
-    def self_play(env: Union[AllPickEnv, CaptainModeEnv]):
+    def self_play(env):
         """
         Generates training data of (s, p, v) triplets by playing against itself and storing the results
 
         :return:
         """
-        print(f'starting self-play with env on port: {env.port}')
-
         env.reset()
         states, actions = [], []
         while not env.done:
