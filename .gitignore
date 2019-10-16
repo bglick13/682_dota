@@ -12,3 +12,5 @@ secret.py
 *.torch
 
 *.pickle
+
+\.DS_Store

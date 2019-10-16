@@ -9,7 +9,7 @@ from grpclib.client import Channel
 from dotaservice.protos.DotaService_pb2 import *
 from dotaservice.protos.DotaService_grpc import DotaServiceStub
 from dotaservice.protos.dota_shared_enums_pb2 import DOTA_GAMEMODE_ALL_DRAFT
-
+import uuid
 
 pd.set_option('display.max_rows', 200)
 pd.set_option('display.max_columns', 100)
@@ -92,6 +92,7 @@ class DraftEnv(ABC):
         radiant_dota_ids = self.heros.loc[self.heros['model_id'].isin(self.radiant), 'id']
         dire_dota_ids = self.heros.loc[self.heros['model_id'].isin(self.dire), 'id']
         hero_picks = []
+
         for hero in radiant_dota_ids:
             hero_picks.append(HeroPick(team_id=TEAM_RADIANT, hero_id=hero, control_mode=HERO_CONTROL_MODE_DEFAULT))
         for hero in dire_dota_ids:
@@ -112,7 +113,6 @@ class DraftEnv(ABC):
         # this is done before the player definition, because there might be humand playing
         # that take up bot positions.
         config.game_id = game_id
-        print(config)
         response = await asyncio.wait_for(dota_service.reset(config), timeout=120)
 
     async def get_winner(self):
@@ -123,17 +123,19 @@ class DraftEnv(ABC):
 
         # game = Game(dota_service=dota_service, max_dota_time=max_dota_time)
         # UUID in game.dota_service.dota_game.game_id
-        game_id = str(datetime.datetime.now().strftime('%b%d_%H-%M-%S-%f'))
-        # game_id = str(time.time())
+        # game_id = uuid.uuid1()
+        game_id = str(time.time())
 
         config = self._get_game_config()
-
+        print(f"Calling play for game id: {game_id} for port {self.port}")
         try:
             await self.play(dota_service=dota_service, config=config, game_id=game_id)
         except:
             channel_dota.close()
-        log_file_path = f'/private/tmp/{game_id}/bots/console.log'
+        log_file_path = f'../{game_id}/bots/console.log'
+        time.sleep(10)
         with open(log_file_path, 'r') as f:
+            print(f'Opened file: {log_file_path}')
             while True:
                 where = f.tell()
                 line = f.readline()
@@ -142,24 +144,30 @@ class DraftEnv(ABC):
                     f.seek(where)
                 else:
                     if 'Building' in line:
-                        print(line)
+                        print(f'Port {self.port}: {line}')
                     if 'npc_dota_badguys_fort destroyed' in line:
-                        print('Radiant Victory')
+                        print(f'Port {self.port}: Radiant Victory')
                         return 1
                     elif 'npc_dota_goodguys_fort destroyed' in line:
-                        print('Dire Victory')
+                        print(f'Port {self.port}: Dire Victory')
                         return 0
+
+    def __str__(self):
+        radiant = self.heros.loc[self.heros['model_id'].isin(self.radiant), 'localized_name']
+        dire = self.heros.loc[self.heros['model_id'].isin(self.dire), 'localized_name']
+
+        return f'Radiant: {radiant}\nDire: {dire}'
 
 
 class AllPickEnv(DraftEnv):
     def __init__(self, heros: pd.DataFrame, port: int):
         super().__init__(heros, port)
-        self.draft_order = [4,
+        self.draft_order = np.array([4,
                             16, 17,
                             5, 8,
                             20, 21,
                             9, 11,
-                            23]
+                            23])
 
     @property
     def done(self):
@@ -197,22 +205,16 @@ class AllPickEnv(DraftEnv):
                               [self.SEP]  # Index [24]
                               )
 
-    def __str__(self):
-        radiant = self.heros.loc[self.heros['model_id'].isin(self.radiant), 'localized_name']
-        dire = self.heros.loc[self.heros['model_id'].isin(self.dire), 'localized_name']
-
-        return f'Radiant: {radiant}\nDire: {dire}'
-
 
 class CaptainModeEnv(DraftEnv):
     def __init__(self, heros: pd.DataFrame, port: int):
         super().__init__(heros, port)
-        self.draft_order = [1, 13, 2, 14, 3, 15,
+        self.draft_order = np.array([1, 13, 2, 14, 3, 15,
                             4, 16, 5, 17,
                             6, 18, 7, 19,
                             8, 20, 9, 21,
                             10, 22,
-                            11, 23]
+                            11, 23])
 
     @property
     def player_turn(self):
