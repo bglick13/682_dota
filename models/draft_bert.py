@@ -218,7 +218,7 @@ class DraftBert(torch.nn.Module):
                                                    torch.nn.Linear(out_ff_dim, n_heros))
 
         dictionary_size = n_heros
-        self.mask_idx = mask_idx
+        self.mask_idx = int(mask_idx)
         self.hero_embeddings = torch.nn.Embedding(dictionary_size, embedding_dim, padding_idx=int(mask_idx))
         self.pe = PositionalEncoding(embedding_dim, 0, max_len=25)
 

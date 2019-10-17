@@ -39,7 +39,7 @@ if __name__ == '__main__':
 
     model.cuda()
 
-    model.pretrain_all_pick(dataset, **{'epochs': int(1), 'lr': 1.0e-4, 'batch_size': 1024, 'mask_pct': 0.1})
+    model.pretrain_all_pick(dataset, **{'epochs': int(100), 'lr': 1.0e-4, 'batch_size': 1024, 'mask_pct': 0.1})
 
     # all_pred, all_true = [], []
     # for i, td in enumerate(test_data):
