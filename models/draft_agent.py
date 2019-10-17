@@ -42,9 +42,10 @@ class DummyAgent(torch.nn.Module):
 
 
 class DraftAgent(DummyAgent):
-    def __init__(self, model: DraftBert, memory_size):
+    def __init__(self, model: DraftBert, solver: Solver, memory_size):
         super().__init__()
-        self.model = model
+        self.model: DraftBert = model
+        self.solver = solver
         self.model.masked_output.requires_grad = False
         self.model.matching_output.requires_grad = False
         self.best_model = model
@@ -107,4 +108,7 @@ class DraftAgent(DummyAgent):
 
         :return:
         """
-        pass
+        p = self.model.get_next_hero_output(s)
+        v = self.model.get_win_output(s)
+        a = self.solver.get_action(s, p, v)
+        return a
