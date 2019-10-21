@@ -1,4 +1,4 @@
-from draft.draft_env import AllPickEnv, CaptainModeEnv
+from draft.draft_env import AllPickState, CaptainModeState
 import numpy as np
 import pandas as pd
 import asyncio
@@ -8,7 +8,7 @@ import pickle
 if __name__ == '__main__':
     port = 13337
     hero_ids = pd.read_json('../const/draft_bert_hero_ids.json', orient='records')
-    draft = CaptainModeEnv(hero_ids, port)
+    draft = CaptainModeState(hero_ids, port)
     while not draft.done:
         moves = draft.get_legal_moves
         move = np.random.choice(moves, 1)

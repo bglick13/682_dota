@@ -1,4 +1,4 @@
-from draft.draft_env import AllPickEnv, CaptainModeEnv
+from draft.draft_env import AllPickState, CaptainModeState
 from models.draft_agent import DraftAgent
 import numpy as np
 import pandas as pd
@@ -12,7 +12,7 @@ if __name__ == '__main__':
     port = 13337
     hero_ids = pd.read_json('../const/draft_bert_hero_ids.json', orient='records')
     print('creating env')
-    draft = CaptainModeEnv(hero_ids, port)
+    draft = CaptainModeState(hero_ids, port)
     print('env created')
     print('loading model')
     model = torch.load('../draft_bert_pretrain.torch', map_location=torch.device('cpu'))

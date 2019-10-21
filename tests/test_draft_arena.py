@@ -1,6 +1,6 @@
 from draft.arena import self_play
 from models.draft_agent import DummyAgent
-from draft.draft_env import CaptainModeEnv
+from draft.draft_env import CaptainModeState
 import pandas as pd
 import asyncio
 
