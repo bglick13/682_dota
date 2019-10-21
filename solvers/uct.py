@@ -5,16 +5,19 @@ import math
 from IPython import embed
 
 import numpy as np
+import time
 
 # import draft.draft_env
 # import models.draft_agent
 # import models.draft_bert
+
 
 class DummyNode(object):
     def __init__(self):
         self.parent = None
         self.child_total_value = collections.defaultdict(float)
         self.child_number_visits = collections.defaultdict(float)
+
 
 class UCTNode(object):
     def __init__(self, state, move, parent=None):
@@ -82,6 +85,7 @@ class UCTNode(object):
             current.total_value += value_estimate * self.state.to_play
             current = current.parent
 
+
 def UCT_search (state, num_reads):
     root = UCTNode(state, move = None, parent = DummyNode())
     for _ in range(num_reads):
@@ -91,10 +95,12 @@ def UCT_search (state, num_reads):
         leaf.backup(value_estimate)
     return np.argmax(root.child_number_visits)
 
+
 class nn():
     @classmethod
     def evaluate(self, state):
         return np.random.random([136]), np.random.random()
+
 
 class State():
     def __init__(self, to_play=1):
@@ -103,8 +109,8 @@ class State():
     def play(self, move):
         return State(-self.to_play)
 
+
 num_reads = 1000
-import time
 tick = time.time()
 UCT_search(State(), num_reads)
 tock = time.time()
