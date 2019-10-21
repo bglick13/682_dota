@@ -6,7 +6,6 @@ import datetime
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
 import pandas as pd
-from grpclib.client import Channel
 from dotaservice.protos.DotaService_pb2 import *
 from dotaservice.protos.DotaService_grpc import DotaServiceStub
 from dotaservice.protos.dota_shared_enums_pb2 import DOTA_GAMEMODE_ALL_DRAFT

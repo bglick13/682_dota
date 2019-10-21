@@ -6,6 +6,8 @@ import asyncio
 import multiprocessing
 from draft.draft_env import AllPickEnv, CaptainModeEnv
 from typing import Union
+from solvers.uct import DummyNode, UCTNode
+from solvers.enum import Solver
 
 
 class DummyAgent(torch.nn.Module):
@@ -51,7 +53,7 @@ class DraftAgent(DummyAgent):
         self.best_model = model
         self.memory = deque(maxlen=memory_size)
 
-    def self_play(self, env: Union[AllPickEnv, CaptainModeEnv]):
+    def self_play(self, env: Union[AllPickEnv, CaptainModeEnv], verbose=0):
         """
         Generates training data of (s, p, v) triplets by playing against itself and storing the results
 
@@ -60,18 +62,25 @@ class DraftAgent(DummyAgent):
         print(f'starting self-play with env on port: {env.port}')
         env.reset()
         states, actions = [], []
+        prior_move, parent = None, None
+        turn = 0
         while not env.done:
+            if verbose == 1:
+                print(f'Turn {turn}\n{env}')
             s = env.state
             s_in = torch.LongTensor([s]).unsqueeze(-1)
             mask = torch.zeros_like(s_in)
 
             encoded_s = self.model.forward(s_in, mask)
-            a = self.get_action(encoded_s[:, env.next_pick_index, :])
+            a, _parent = self.get_action(encoded_s[:, env.next_pick_index, :], prior_move, parent)
+            prior_move = a
+            parent = _parent
 
             states.append(s)
             actions.append(a)
 
             env.pick(a)
+
         loop = asyncio.get_event_loop()
         coro = env.get_winner()
         winner = loop.run_until_complete(coro)
@@ -102,13 +111,15 @@ class DraftAgent(DummyAgent):
         """
         pass
 
-    def get_action(self, s):
-        """
-        Tree-search to decide an action
-
-        :return:
-        """
-        p = self.model.get_next_hero_output(s)
-        v = self.model.get_win_output(s)
-        a = self.solver.get_action(s, p, v)
-        return a
+    def get_action(self, state, prior_move=None, parent=None, num_reads=1):
+        if self.solver == Solver.UCT:
+            if parent is None:
+                parent = DummyNode()
+            root = UCTNode(state, move=prior_move, parent=parent)
+            for _ in range(num_reads):
+                leaf = root.select_leaf()
+                child_priors, value_estimate = (self.model.get_next_hero_output(state),
+                                                self.model.get_win_output(state))
+                leaf.expand(child_priors)
+                leaf.backup(value_estimate)
+        return np.argmax(root.child_number_visits), root

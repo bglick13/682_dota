@@ -51,11 +51,7 @@ class UCTNode(object):
         return self.child_total_value / (1 + self.child_number_visits)
 
     def child_U(self):
-        try:
-            return nn.evaluate(self.state)[1] * np.sqrt(np.log(self.number_visits)/(1 + self.child_number_visits))
-        except Exception:
-            embed()
-            quit()
+        return nn.evaluate(self.state)[1] * np.sqrt(np.log(self.number_visits)/(1 + self.child_number_visits))
 
     def best_child(self):
         return np.argmax(self.child_Q() + self.child_U())
@@ -82,7 +78,8 @@ class UCTNode(object):
         current = self
         while current.parent is not None:
             current.number_visits += 1
-            current.total_value += value_estimate * self.state.to_play
+            # TODO: Connor is unconvinced this should be commented out - he's wrong
+            current.total_value += value_estimate  #* self.state.to_play
             current = current.parent
 
 
