@@ -14,9 +14,6 @@ import pickle
 import docker
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 
-
-client = docker.from_env()
-
 pd.set_option('display.max_rows', 200)
 pd.set_option('display.max_columns', 100)
 

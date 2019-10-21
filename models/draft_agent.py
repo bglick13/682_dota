@@ -81,15 +81,15 @@ class DraftAgent(DummyAgent):
 
             env.pick(a)
 
-        loop = asyncio.get_event_loop()
-        coro = env.get_winner()
-        winner = loop.run_until_complete(coro)
-        values = np.zeros_like(states)
-        if winner == 1:
-            values[env.draft_order <= 11] = 1
-        else:
-            values[env.draft_order > 11] = 1
-        return states, actions, values, winner
+        # loop = asyncio.get_event_loop()
+        # coro = env.get_winner()
+        # winner = loop.run_until_complete(coro)
+        # values = np.zeros_like(states)
+        # if winner == 1:
+        #     values[env.draft_order <= 11] = 1
+        # else:
+        #     values[env.draft_order > 11] = 1
+        # return states, actions, values, winner
 
     def update_network(self, batch_size, steps):
         """
@@ -120,6 +120,10 @@ class DraftAgent(DummyAgent):
                 leaf = root.select_leaf()
                 child_priors, value_estimate = (self.model.get_next_hero_output(state),
                                                 self.model.get_win_output(state))
+                child_priors = child_priors.detach().cpu().numpy()[0]
+                illegal_moves = list(set(range(len(child_priors))) - set(legal_moves))
+                child_priors[illegal_moves] = 0
+                value_estimate = value_estimate.detach().cpu().numpy()[0, 1]
                 leaf.expand(child_priors)
                 leaf.backup(value_estimate)
         return np.argmax(root.child_number_visits), root

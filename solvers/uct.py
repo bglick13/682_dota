@@ -2,10 +2,10 @@ import collections
 import random
 import math
 
-from IPython import embed
 
 import numpy as np
 import time
+import copy
 
 # import draft.draft_env
 # import models.draft_agent

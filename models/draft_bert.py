@@ -12,6 +12,7 @@ import copy
 
 
 pd.set_option('display.max_rows', 200)
+cuda = torch.cuda.is_available()
 
 class DraftBertTasks(Enum):
     DRAFT_PREDICTION = 1
@@ -219,7 +220,7 @@ class DraftBert(torch.nn.Module):
 
         dictionary_size = n_heros
         self.mask_idx = int(mask_idx)
-        self.hero_embeddings = torch.nn.Embedding(dictionary_size, embedding_dim, padding_idx=int(mask_idx))
+        self.   hero_embeddings = torch.nn.Embedding(dictionary_size, embedding_dim, padding_idx=int(mask_idx))
         self.pe = PositionalEncoding(embedding_dim, 0, max_len=25)
 
     def embed_lineup(self, lineup):
@@ -227,7 +228,8 @@ class DraftBert(torch.nn.Module):
             lineup = torch.LongTensor(lineup)
         if len(lineup.shape) == 1:
             lineup = lineup.unsqueeze(0)
-        lineup = lineup.cuda()
+        if cuda:
+            lineup = lineup.cuda()
         return self.hero_embeddings(lineup)
 
     def forward(self, src: torch.LongTensor, mask: torch.BoolTensor):
@@ -240,7 +242,9 @@ class DraftBert(torch.nn.Module):
         """
 
         # First, we encode the src sequence into the latent hero representation
-        src[mask] = torch.LongTensor([self.mask_idx] * src.shape[0]).cuda()  # Set the masked values to the embedding pad idx
+        src[mask] = torch.LongTensor([self.mask_idx] * src.shape[0])
+        if cuda:
+            src = src.cuda()  # Set the masked values to the embedding pad idx
         src = self.hero_embeddings(src)
         src = src + np.sqrt(self.embedding_dim)
         src = self.pe(src)
@@ -316,22 +320,27 @@ class DraftBert(torch.nn.Module):
                 shuffled_lineups = src_batch[is_correct_matchup == 0, :][:, [16, 17, 20, 21, 23]]
                 shuffled_lineups = shuffled_lineups[torch.randperm(shuffled_lineups.size()[0])]
                 src_batch[is_correct_matchup == 0, :][:, [16, 17, 20, 21, 23]] = shuffled_lineups
-
-                src_batch = src_batch.cuda()
-                mask_batch = mask_batch.cuda()
+                if cuda:
+                    src_batch = src_batch.cuda()
+                    mask_batch = mask_batch.cuda()
 
                 out = self.forward(src_batch, mask_batch)  # -> shape (batch_size, sequence_length, embedding_dim)
                 to_predict = out[mask_batch]
                 mask_pred = self.get_masked_output(to_predict)
-                mask_tgt_batch = tgt_batch[mask_batch].cuda()
+                mask_tgt_batch = tgt_batch[mask_batch]
+                if cuda:
+                    mask_tgt_batch = mask_tgt_batch.cuda()
                 mask_batch_loss = mask_loss(mask_pred, mask_tgt_batch)
 
                 is_correct_pred = self.get_matching_output(out[:, 0, :])
-                is_correct_matchup = torch.LongTensor(is_correct_matchup).cuda()
+                is_correct_matchup = torch.LongTensor(is_correct_matchup)
+                if cuda:
+                    is_correct_matchup = is_correct_matchup.cuda()
                 is_correct_loss = matching_loss(is_correct_pred, is_correct_matchup)
 
                 win_pred = self.get_win_output(out[:, 0, :])
-                win_batch = win_batch.cuda()
+                if cuda:
+                    win_batch = win_batch.cuda()
                 batch_win_loss = win_loss(win_pred, win_batch.squeeze())
 
                 batch_loss = (mask_batch_loss + is_correct_loss + batch_win_loss) / 3.
@@ -407,9 +416,9 @@ class DraftBert(torch.nn.Module):
 
                 # Generate masks for random heros
                 masks = self._gen_random_masks(src_batch, mask_pct)
-
-                src_batch = src_batch.cuda()
-                masks = masks.cuda()
+                if cuda:
+                    src_batch = src_batch.cuda()
+                    masks = masks.cuda()
 
                 out = self.forward(src_batch, masks)  # -> shape (batch_size, sequence_length, embedding_dim)
                 to_predict = out[masks]
@@ -418,7 +427,9 @@ class DraftBert(torch.nn.Module):
                 mask_batch_loss = mask_loss(mask_pred, mask_tgt_batch)
 
                 is_correct_pred = self.get_matching_output(out[:, 0, :])
-                is_correct_matchup = torch.LongTensor(is_correct_matchup).cuda()
+                is_correct_matchup = torch.LongTensor(is_correct_matchup)
+                if cuda:
+                    is_correct_matchup = is_correct_matchup.cuda()
                 is_correct_loss = matching_loss(is_correct_pred, is_correct_matchup)
                 batch_loss = (mask_batch_loss + is_correct_loss) / 2.
                 batch_loss.backward()
@@ -443,8 +454,9 @@ class DraftBert(torch.nn.Module):
             mask = torch.BoolTensor(mask)
         self.eval()
         if task == DraftBertTasks.DRAFT_PREDICTION:
-            src = src.cuda()
-            mask = mask.cuda()
+            if cuda:
+                src = src.cuda()
+                mask = mask.cuda()
             out = self.forward(src, mask)  # -> shape (batch_size, sequence_length, embedding_dim)
             to_predict = out[mask]
             pred = self.get_masked_output(to_predict)
