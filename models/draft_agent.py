@@ -4,11 +4,12 @@ from models.draft_bert import DraftBert
 from collections import deque
 import asyncio
 import multiprocessing
-from draft.draft_env import AllPickEnv, CaptainModeEnv
 from typing import Union
 from solvers.uct import DummyNode, UCTNode
-from solvers.enum import Solver
+from solvers.mcts2 import MCTS, Node, Edge
+from torch.functional import F
 
+cuda = torch.cuda.is_available()
 
 class DummyAgent(torch.nn.Module):
     def __init__(self):
@@ -44,52 +45,28 @@ class DummyAgent(torch.nn.Module):
 
 
 class DraftAgent(DummyAgent):
-    def __init__(self, model: DraftBert, solver: Solver, memory_size):
+    def __init__(self, model: DraftBert, solver, memory_size):
         super().__init__()
         self.model: DraftBert = model
+        if cuda:
+            self.model.cuda()
         self.solver = solver
         self.model.masked_output.requires_grad = False
         self.model.matching_output.requires_grad = False
         self.best_model = model
         self.memory = deque(maxlen=memory_size)
+        self.action_size = model.n_heros
 
-    def self_play(self, env: Union[AllPickEnv, CaptainModeEnv], verbose=0):
+    def simulate(self):
         """
         Generates training data of (s, p, v) triplets by playing against itself and storing the results
 
         :return:
         """
-        print(f'starting self-play with env on port: {env.port}')
-        env.reset()
-        states, actions = [], []
-        prior_move, parent = None, None
-        turn = 0
-        while not env.done:
-            if verbose == 1:
-                print(f'Turn {turn}\n{env}')
-            s = env.state
-            s_in = torch.LongTensor([s]).unsqueeze(-1)
-            mask = torch.zeros_like(s_in)
 
-            encoded_s = self.model.forward(s_in, mask)
-            a, _parent = self.get_action(encoded_s[:, env.next_pick_index, :], prior_move, parent)
-            prior_move = a
-            parent = _parent
-
-            states.append(s)
-            actions.append(a)
-
-            env.pick(a)
-
-        loop = asyncio.get_event_loop()
-        coro = env.get_winner()
-        winner = loop.run_until_complete(coro)
-        values = np.zeros_like(states)
-        if winner == 1:
-            values[env.draft_order <= 11] = 1
-        else:
-            values[env.draft_order > 11] = 1
-        return states, actions, values, winner
+        leaf, value, done, breadcrumbs = self.solver.moveToLeaf()
+        value, breadcrumbs = self.evaluate_leaf(leaf, value, done, breadcrumbs)
+        self.solver.backFill(leaf, value, breadcrumbs)
 
     def update_network(self, batch_size, steps):
         """
@@ -111,15 +88,74 @@ class DraftAgent(DummyAgent):
         """
         pass
 
-    def get_action(self, state, prior_move=None, parent=None, num_reads=1):
-        if self.solver == Solver.UCT:
-            if parent is None:
-                parent = DummyNode()
-            root = UCTNode(state, move=prior_move, parent=parent)
-            for _ in range(num_reads):
-                leaf = root.select_leaf()
-                child_priors, value_estimate = (self.model.get_next_hero_output(state),
-                                                self.model.get_win_output(state))
-                leaf.expand(child_priors)
-                leaf.backup(value_estimate)
-        return np.argmax(root.child_number_visits), root
+    def act(self, state, num_reads=100):
+        if self.solver is None or state.id not in self.solver.tree:
+            self.root = Node(state)
+            self.solver = MCTS(self.root)
+        else:
+            self.solver.root = self.solver.tree[state.id]
+
+        # root = UCTNode(state, move=prior_move, parent=parent)
+        for _ in range(num_reads):
+            self.simulate()
+            # leaf = root.select_leaf()
+            # child_priors, value_estimate = (self.model.get_next_hero_output(state),
+            #                                 self.model.get_win_output(state))
+            # child_priors = child_priors.detach().cpu().numpy()[0]
+            # illegal_moves = list(set(range(len(child_priors))) - set(legal_moves))
+            # child_priors[illegal_moves] = 0
+            # value_estimate = value_estimate.detach().cpu().numpy()[0, 1]
+            # leaf.expand(child_priors)
+            # leaf.backup(value_estimate)
+        action, value = self.choose_action()
+        return action, value
+
+    def get_preds(self, state):
+        s = state.state
+        s_in = torch.LongTensor([s])
+        mask = torch.zeros_like(s_in)
+
+        encoded_s = self.model.forward(s_in, mask)
+        probs = self.model.get_next_hero_output(encoded_s[:, state.draft_order[state.next_pick_index], :])
+        probs = probs[0]
+
+        value = F.softmax(self.model.get_win_output(encoded_s[:, 0, :]), -1).detach().cpu().numpy()[0][1]
+        legal_moves = state.get_legal_moves
+        illegal_moves = np.ones(probs.shape, dtype=bool)
+        illegal_moves[legal_moves] = False
+        probs[illegal_moves] = -100
+        probs = F.softmax(probs, -1).detach().cpu().numpy()
+        return (probs, value, legal_moves)
+
+    def evaluate_leaf(self, leaf, value, done, breadcrumbs):
+        if done == 0:
+            probs, value, legal_moves = self.get_preds(leaf.state)
+            # probs = probs[legal_moves]
+            for idx, action in enumerate(legal_moves):
+                new_state, _, __ = leaf.state.take_action(action)
+                if new_state.id not in self.solver.tree:
+                    node = Node(new_state)
+                    self.solver.addNode(node)
+                else:
+                    node = self.solver.tree[new_state.id]
+                edge = Edge(leaf, node, probs[action], action)
+                leaf.edges.append((action, edge))
+        return value, breadcrumbs
+
+    def choose_action(self):
+        edges = self.solver.root.edges
+        pi = np.zeros(self.action_size, dtype=np.integer)
+        values = np.zeros(self.action_size, dtype=np.float32)
+
+        for action, edge in edges:
+            pi[action] = edge.stats['N']
+            values[action] = edge.stats['Q']
+
+        pi = pi / (np.sum(pi) * 1.0)
+        actions = np.argwhere(pi == max(pi))
+
+        action = np.random.choice(actions.squeeze(-1))
+
+        value = values[action]
+
+        return action, value

@@ -1,4 +1,4 @@
-from draft.draft_env import AllPickEnv, CaptainModeEnv
+from draft.draft_env import CaptainModeDraft, DraftState
 from models.draft_agent import DraftAgent
 import numpy as np
 import pandas as pd
@@ -11,7 +11,28 @@ from solvers.enum import Solver
 if __name__ == '__main__':
     port = 13337
     hero_ids = pd.read_json('../const/draft_bert_hero_ids.json', orient='records')
-    draft = CaptainModeEnv(hero_ids, port)
-    model = torch.load('../draft_bert_pretrain.torch')
-    agent: DraftAgent = DraftAgent(model=model, solver=Solver.UCT, memory_size=100000)
-    agent.self_play(draft)
+    print('creating env')
+    draft = CaptainModeDraft(hero_ids)
+    print('env created')
+    print('loading model')
+    model = torch.load('../draft_bert_pretrain.torch', map_location=torch.device('cpu'))
+    print('model loaded')
+    radiant_player: DraftAgent = DraftAgent(model=model, solver=None, memory_size=100000)
+    dire_player: DraftAgent = DraftAgent(model=model, solver=None, memory_size=100000)
+    state = draft.reset()
+    turn = 0
+    while True:
+        if draft.next_pick_index < 13:
+            action, value = radiant_player.act(state)
+        else:
+            action, value = dire_player.act(state)
+        state, value, done = draft.step(action)
+        print(f'\nTurn {turn}:\n{state}')
+        if value == -1:  # Dire victory
+            print('Dire victory')
+            break
+        elif value == 1:
+            print('Radiant Victory')
+            break
+        turn += 1
+

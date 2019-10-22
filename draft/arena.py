@@ -6,7 +6,7 @@ import time
 import asyncio
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 import functools
-from draft.draft_env import CaptainModeEnv
+from draft.draft_env import CaptainModeState
 from aiomultiprocess import Pool
 import docker
 
@@ -26,7 +26,7 @@ def self_play(agent, heros, n_jobs, n_games):
     for set_of_games in range(n_games//n_jobs):
 
         pool = ProcessPoolExecutor(2)
-        envs = [CaptainModeEnv(heros, 13337+i) for i in range(n_jobs)]
+        envs = [CaptainModeState(heros, 13337 + i) for i in range(n_jobs)]
         results = pool.map(agent.self_play, envs)
 
         for r in results:
