@@ -107,10 +107,10 @@ class State():
         return State(-self.to_play)
 
 
-num_reads = 1000
-tick = time.time()
-UCT_search(State(), num_reads)
-tock = time.time()
-print("Took %s sec to run %s times" % (tock - tick, num_reads))
-# import resource
-# print("Consumed %sB memory" % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+# num_reads = 1000
+# tick = time.time()
+# UCT_search(State(), num_reads)
+# tock = time.time()
+# print("Took %s sec to run %s times" % (tock - tick, num_reads))
+# # import resource
+# # print("Consumed %sB memory" % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)

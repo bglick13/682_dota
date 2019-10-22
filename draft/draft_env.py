@@ -6,9 +6,13 @@ import datetime
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
 import pandas as pd
-from dotaservice.protos.DotaService_pb2 import *
-from dotaservice.protos.DotaService_grpc import DotaServiceStub
-from dotaservice.protos.dota_shared_enums_pb2 import DOTA_GAMEMODE_ALL_DRAFT
+try:
+    from dotaservice.protos.DotaService_pb2 import *
+    from dotaservice.protos.DotaService_grpc import DotaServiceStub
+    from dotaservice.protos.dota_shared_enums_pb2 import DOTA_GAMEMODE_ALL_DRAFT
+except ModuleNotFoundError:
+    dotaservice = False
+    print('dotaservice not found')
 import uuid
 import pickle
 import docker
@@ -32,15 +36,16 @@ class CaptainModeDraft:
         self.SEP = heros.loc[heros['name'] == 'SEP', 'model_id'].values[0]
         self.MASK = heros.loc[heros['name'] == 'MASK', 'model_id'].values[0]
         self.CLS = heros.loc[heros['name'] == 'CLS', 'model_id'].values[0]
-        self.state = DraftState(np.ones(25) * self.MASK, self.next_pick_index, 13337)
+        self.state = DraftState(np.ones(25) * self.MASK, self.next_pick_index, 13337, heros)
 
     def reset(self):
         self.next_pick_index = 0
-        return np.ones(25) * self.MASK
+        return self.state
 
     def step(self, action):
         next_state, value, done = self.state.take_action(action)
         self.next_pick_index += 1
+        self.state = next_state
         return next_state, value, done
 
 
@@ -63,14 +68,18 @@ class DraftState(ABC):
                                      11, 23])
 
         self.next_pick_index = next_pick_index
-
-        self.TICKS_PER_OBSERVATION = 15
-        self.N_DELAY_ENUMS = 5
-        self.HOST_TIMESCALE = 10
-        self.HOST_MODE = HostMode.Value('HOST_MODE_DEDICATED')
+        if dotaservice:
+            self.TICKS_PER_OBSERVATION = 15
+            self.N_DELAY_ENUMS = 5
+            self.HOST_TIMESCALE = 10
+            self.HOST_MODE = HostMode.Value('HOST_MODE_DEDICATED')
 
     @property
-    def player_turn(self):
+    def id(self):
+        return f'{self.game_state}'
+
+    @property
+    def playerTurn(self):
         """
         Returns 1 if Dire, 0 if Radiant
 
@@ -81,7 +90,7 @@ class DraftState(ABC):
 
     @property
     def done(self):
-        return self.next_pick_index > 21
+        return self.next_pick_index > 24
 
     @property
     def state(self):
@@ -98,8 +107,16 @@ class DraftState(ABC):
         return self.game_state[[4, 5, 8, 9, 11]]
 
     @property
+    def radiant_bans(self):
+        return self.game_state[[1, 2, 3, 6, 7]]
+
+    @property
     def dire(self):
         return self.game_state[[16, 17, 20, 21, 23]]
+
+    @property
+    def dire_bans(self):
+        return self.game_state[[13, 14, 15, 18, 19]]
 
     @property
     def radiant_dota_ids(self):
@@ -212,14 +229,17 @@ class DraftState(ABC):
                         return 1
                     elif 'npc_dota_goodguys_fort destroyed' in line:
                         print(f'Dire Victory')
-                        return 0
+                        return -1
 
     def __str__(self):
         radiant = self.heros.loc[self.heros['model_id'].isin(self.radiant), 'localized_name']
+        radiant_bans = self.heros.loc[self.heros['model_id'].isin(self.radiant_bans), 'localized_name']
         dire = self.heros.loc[self.heros['model_id'].isin(self.dire), 'localized_name']
+        dire_bans = self.heros.loc[self.heros['model_id'].isin(self.dire_bans), 'localized_name']
+        out = f'Radiant Bans:\n{radiant_bans}\nDire Bans\n{dire_bans}'
+        out += f'\nRadiant\n{radiant}\nDire\n{dire}'
 
-        return f'Radiant: {radiant}\nDire: {dire}'
-
+        return out
 
 # class AllPickState(DraftState):
 #     def __init__(self, heros: pd.DataFrame):

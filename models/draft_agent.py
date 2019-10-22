@@ -4,11 +4,12 @@ from models.draft_bert import DraftBert
 from collections import deque
 import asyncio
 import multiprocessing
-from draft.draft_env import AllPickState, CaptainModeState
 from typing import Union
 from solvers.uct import DummyNode, UCTNode
-from solvers.enum import Solver
+from solvers.mcts2 import MCTS, Node, Edge
 from torch.functional import F
+
+cuda = torch.cuda.is_available()
 
 class DummyAgent(torch.nn.Module):
     def __init__(self):
@@ -47,11 +48,14 @@ class DraftAgent(DummyAgent):
     def __init__(self, model: DraftBert, solver, memory_size):
         super().__init__()
         self.model: DraftBert = model
+        if cuda:
+            self.model.cuda()
         self.solver = solver
         self.model.masked_output.requires_grad = False
         self.model.matching_output.requires_grad = False
         self.best_model = model
         self.memory = deque(maxlen=memory_size)
+        self.action_size = model.n_heros
 
     def simulate(self):
         """
@@ -60,9 +64,9 @@ class DraftAgent(DummyAgent):
         :return:
         """
 
-        leaf, value, done, breadcrumbs = self.solver.move_to_leaf()
-        value, breadcrumbs = self.evaluate_leaf(leaf, value, done)
-        self.solver.backward(leaf, value, breadcrumbs)
+        leaf, value, done, breadcrumbs = self.solver.moveToLeaf()
+        value, breadcrumbs = self.evaluate_leaf(leaf, value, done, breadcrumbs)
+        self.solver.backFill(leaf, value, breadcrumbs)
 
     def update_network(self, batch_size, steps):
         """
@@ -84,12 +88,12 @@ class DraftAgent(DummyAgent):
         """
         pass
 
-    def act(self, state, num_reads=1):
+    def act(self, state, num_reads=100):
         if self.solver is None or state.id not in self.solver.tree:
-            self.root = UCTNode(state)
-            self.solver = UCT(self.root)
+            self.root = Node(state)
+            self.solver = MCTS(self.root)
         else:
-            self.search.root = self.search.tree[state.id]
+            self.solver.root = self.solver.tree[state.id]
 
         # root = UCTNode(state, move=prior_move, parent=parent)
         for _ in range(num_reads):
@@ -103,38 +107,55 @@ class DraftAgent(DummyAgent):
             # value_estimate = value_estimate.detach().cpu().numpy()[0, 1]
             # leaf.expand(child_priors)
             # leaf.backup(value_estimate)
-        self.choose_action()
-        return np.argmax(root.child_number_visits), root
+        action, value = self.choose_action()
+        return action, value
 
     def get_preds(self, state):
         s = state.state
-        s_in = torch.LongTensor([s]).unsqueeze(-1)
+        s_in = torch.LongTensor([s])
         mask = torch.zeros_like(s_in)
 
         encoded_s = self.model.forward(s_in, mask)
         probs = self.model.get_next_hero_output(encoded_s[:, state.draft_order[state.next_pick_index], :])
-        probs = probs.detach().cpu().numpy()[0]
+        probs = probs[0]
 
-        value = self.model.get_win_output(encoded_s[:, 0, :]).detach().cpu().numpy()[0][1]
+        value = F.softmax(self.model.get_win_output(encoded_s[:, 0, :]), -1).detach().cpu().numpy()[0][1]
         legal_moves = state.get_legal_moves
         illegal_moves = np.ones(probs.shape, dtype=bool)
         illegal_moves[legal_moves] = False
         probs[illegal_moves] = -100
-        probs = F.softmax(probs, -1)
+        probs = F.softmax(probs, -1).detach().cpu().numpy()
         return (probs, value, legal_moves)
 
-    def evaluate_leaf(self, leaf, value, done):
+    def evaluate_leaf(self, leaf, value, done, breadcrumbs):
         if done == 0:
             probs, value, legal_moves = self.get_preds(leaf.state)
-            probs = probs[legal_moves]
+            # probs = probs[legal_moves]
             for idx, action in enumerate(legal_moves):
                 new_state, _, __ = leaf.state.take_action(action)
-                if new_state.id not in self.search.tree:
-                    node = UCTNode(new_state)
-                    self.search.add_node(node)
+                if new_state.id not in self.solver.tree:
+                    node = Node(new_state)
+                    self.solver.addNode(node)
                 else:
-                    node = self.search.tree[new_state.id]
-                edge = UCTEdge(leaf, node, )
+                    node = self.solver.tree[new_state.id]
+                edge = Edge(leaf, node, probs[action], action)
                 leaf.edges.append((action, edge))
-        return value
+        return value, breadcrumbs
 
+    def choose_action(self):
+        edges = self.solver.root.edges
+        pi = np.zeros(self.action_size, dtype=np.integer)
+        values = np.zeros(self.action_size, dtype=np.float32)
+
+        for action, edge in edges:
+            pi[action] = edge.stats['N']
+            values[action] = edge.stats['Q']
+
+        pi = pi / (np.sum(pi) * 1.0)
+        actions = np.argwhere(pi == max(pi))
+
+        action = np.random.choice(actions.squeeze(-1))
+
+        value = values[action]
+
+        return action, value
