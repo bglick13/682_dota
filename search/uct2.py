@@ -11,71 +11,98 @@ import time
 # import models.draft_agent
 # import models.draft_bert
 
+class DummyNode(object):
+    def __init__(self):
+        self.parent = None
+        self.child_total_value = collections.defaultdict(float)
+        self.child_number_visits = collections.defaultdict(float)
+
+
 class UCTNode(object):
     def __init__(self, state, move, parent=None):
         self.state = state
         self.move = move
         self.is_expanded = False
         self.parent = parent
-        self.legal_moves = random.shuffle(self.state.getLegalMoves())
+        # self.legal_moves = self.state.get_legal_moves
         self.children = {}
-        self.child_priors = np.zeros([len(legal_moves)], dtype=np.float32)
-        self.child_total_value = np.zeros([len(legal_moves)], dtype=np.float32)
-        self.child_number_visits = np.zeros([len(legal_moves)], dtype=np.float32)
+        self.child_priors = np.zeros([len(self.state.heros)], dtype=np.float32)
+        self.child_total_value = np.zeros([len(self.state.heros)], dtype=np.float32)
+        self.child_number_visits = np.zeros([len(self.state.heros)], dtype=np.float32)
 
     def is_leaf(self):
         return len(self.edges) == 0
 
     @property
     def number_visits(self):
+        if self.parent is None:
+            return 0
         return self.parent.child_number_visits[self.move]
     
     @number_visits.setter
     def number_visits(self, value):
-        self.parent.child_number_visits[self.move] = value
+        if self.parent is not None:
+            self.parent.child_number_visits[self.move] = value
 
     @property
     def total_value(self):
+        if self.parent is None:
+            return 0
         return self.parent.child_total_value[self.move]
 
     @total_value.setter
     def total_value(self, value):
-        self.parent.child_total_value[self.move] = value
+        if self.parent is not None:
+            self.parent.child_total_value[self.move] = value
 
     def child_Q(self):
         return self.child_total_value / (1 + self.child_number_visits)
 
     def child_U(self):
-        return nn.evaluate(self.state)[1] * np.sqrt(np.log(self.number_visits)/(1 + self.child_number_visits))
+        # TODO: Literally anything but this
+        return 1.#nn.evaluate(self.state)[1] * np.sqrt(np.log(self.number_visits)/(1 + self.child_number_visits))
 
     def best_child(self):
-        return np.argmax(self.child_Q() + self.child_U())
+        values = self.child_Q() + self.child_U()
+        legal_moves = self.state.get_legal_moves
+        illegal_moves = np.ones(values.shape, dtype=bool)
+        illegal_moves[legal_moves] = False
+        values[illegal_moves] = -np.inf
+        best = np.argmax(values)
+        return best, values[best]
 
     def expand(self, child_priors):
         self.is_expanded = True
         self.child_priors = child_priors
 
     def add_child(self, move):
-        self.children[move] = UCTNode(self.state.play(move), move = move, parent=self)
+        # Value will be 0 unless the game is over
+        new_state, value, done = self.state.take_action(move)
+        self.children[move] = UCTNode(new_state, move = move, parent=self)
 
 
 class UCT():
     def __init__(self, state, num_rollouts):
-        root = UCTNode(state, move = None, parent = DummyNode())
+        # I'm passing in instantiated nodes instead of just states, is that okay?
+        self.root = state
         self.num_rollouts = num_rollouts
 
-    def rollout(self, node):
+    def rollout(self, node=None):
+        # TODO: @connor - Does this change work/make sense?
+        node = self.root
         while node.is_expanded:
             node.number_visits += 1
             node.total_value -= 1
-            move = node.best_child()
-            if move not in self.children:
-                self.add_child(move)
-            node = self.children[move]
+            move, value = node.best_child()
+            if move not in node.children:
+                node.add_child(move)
+            node = node.children[move]
 
-        child_priors, value_estimate = nn.evaluate(node.state)
-        node.expand(child_priors)
-        return value_estimate
+        # TODO: @connor can I just return the node here and then evaluate and expand from a function in 'agent'?
+        return node
+        # child_priors, value_estimate = nn.evaluate(node.state)
+        # node.expand(child_priors)
+        # return value_estimate
 
     def backup(self, node, value_estimate):
         while node.parent is not None:

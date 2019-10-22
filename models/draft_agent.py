@@ -5,8 +5,9 @@ from collections import deque
 import asyncio
 import multiprocessing
 from typing import Union
-from solvers.uct import DummyNode, UCTNode
-from solvers.mcts2 import MCTS, Node, Edge
+# from solvers.uct import DummyNode, UCTNode
+# from solvers.mcts2 import MCTS, Node, Edge
+from search.uct2 import UCTNode, UCT, DummyNode
 from torch.functional import F
 
 cuda = torch.cuda.is_available()
@@ -45,12 +46,12 @@ class DummyAgent(torch.nn.Module):
 
 
 class DraftAgent(DummyAgent):
-    def __init__(self, model: DraftBert, solver, memory_size):
+    def __init__(self, model: DraftBert, memory_size):
         super().__init__()
         self.model: DraftBert = model
         if cuda:
             self.model.cuda()
-        self.solver = solver
+        self.solver = None
         self.model.masked_output.requires_grad = False
         self.model.matching_output.requires_grad = False
         self.best_model = model
@@ -64,9 +65,9 @@ class DraftAgent(DummyAgent):
         :return:
         """
 
-        leaf, value, done, breadcrumbs = self.solver.moveToLeaf()
-        value, breadcrumbs = self.evaluate_leaf(leaf, value, done, breadcrumbs)
-        self.solver.backFill(leaf, value, breadcrumbs)
+        leaf = self.solver.rollout()
+        value = self.evaluate_leaf(leaf)
+        self.solver.backup(leaf, value)
 
     def update_network(self, batch_size, steps):
         """
@@ -88,12 +89,13 @@ class DraftAgent(DummyAgent):
         """
         pass
 
-    def act(self, state, num_reads=100):
-        if self.solver is None or state.id not in self.solver.tree:
-            self.root = Node(state)
-            self.solver = MCTS(self.root)
+    def act(self, state, action=-1, num_reads=100):
+        if self.solver is None:
+            self.root = UCTNode(state, action)
+            self.solver = UCT(self.root, num_reads)
         else:
-            self.solver.root = self.solver.tree[state.id]
+            self.root = UCTNode(state, action, self.root)
+            self.solver.root = self.root
 
         # root = UCTNode(state, move=prior_move, parent=parent)
         for _ in range(num_reads):
@@ -127,35 +129,11 @@ class DraftAgent(DummyAgent):
         probs = F.softmax(probs, -1).detach().cpu().numpy()
         return (probs, value, legal_moves)
 
-    def evaluate_leaf(self, leaf, value, done, breadcrumbs):
-        if done == 0:
-            probs, value, legal_moves = self.get_preds(leaf.state)
-            # probs = probs[legal_moves]
-            for idx, action in enumerate(legal_moves):
-                new_state, _, __ = leaf.state.take_action(action)
-                if new_state.id not in self.solver.tree:
-                    node = Node(new_state)
-                    self.solver.addNode(node)
-                else:
-                    node = self.solver.tree[new_state.id]
-                edge = Edge(leaf, node, probs[action], action)
-                leaf.edges.append((action, edge))
-        return value, breadcrumbs
+    def evaluate_leaf(self, leaf):
+        probs, value, legal_moves = self.get_preds(leaf.state)
+        leaf.expand(probs)
+        return value
 
     def choose_action(self):
-        edges = self.solver.root.edges
-        pi = np.zeros(self.action_size, dtype=np.integer)
-        values = np.zeros(self.action_size, dtype=np.float32)
-
-        for action, edge in edges:
-            pi[action] = edge.stats['N']
-            values[action] = edge.stats['Q']
-
-        pi = pi / (np.sum(pi) * 1.0)
-        actions = np.argwhere(pi == max(pi))
-
-        action = np.random.choice(actions.squeeze(-1))
-
-        value = values[action]
-
+        action, value = self.root.best_child()
         return action, value

@@ -31,6 +31,12 @@ pd.set_option('display.max_columns', 100)
 
 class CaptainModeDraft:
     def __init__(self, heros: pd.DataFrame):
+        self.draft_order = np.array([1, 13, 2, 14, 3, 15,
+                                     4, 16, 5, 17,
+                                     6, 18, 7, 19,
+                                     8, 20, 9, 21,
+                                     10, 22,
+                                     11, 23])
         self.next_pick_index = 0
         self.heros = heros
         self.SEP = heros.loc[heros['name'] == 'SEP', 'model_id'].values[0]
@@ -90,7 +96,7 @@ class DraftState(ABC):
 
     @property
     def done(self):
-        return self.next_pick_index > 24
+        return self.next_pick_index > 21
 
     @property
     def state(self):
@@ -108,7 +114,7 @@ class DraftState(ABC):
 
     @property
     def radiant_bans(self):
-        return self.game_state[[1, 2, 3, 6, 7]]
+        return self.game_state[[1, 2, 3, 6, 7, 10]]
 
     @property
     def dire(self):
@@ -116,7 +122,7 @@ class DraftState(ABC):
 
     @property
     def dire_bans(self):
-        return self.game_state[[13, 14, 15, 18, 19]]
+        return self.game_state[[13, 14, 15, 18, 19], 22]
 
     @property
     def radiant_dota_ids(self):
