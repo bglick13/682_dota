@@ -60,7 +60,6 @@ class DraftAgent(DummyAgent):
 
     def simulate(self):
         """
-        Generates training data of (s, p, v) triplets by playing against itself and storing the results
 
         :return:
         """
@@ -112,26 +111,33 @@ class DraftAgent(DummyAgent):
         action, value = self.choose_action()
         return action, value
 
-    def get_preds(self, state):
+    def get_preds(self, leaf):
+        state = leaf.state
         s = state.state
         s_in = torch.LongTensor([s])
         mask = torch.zeros_like(s_in)
 
         encoded_s = self.model.forward(s_in, mask)
-        probs = self.model.get_next_hero_output(encoded_s[:, state.draft_order[state.next_pick_index], :])
-        probs = probs[0]
+        if leaf.state.next_pick_index < 22:
+            probs = self.model.get_next_hero_output(encoded_s[:, state.draft_order[state.next_pick_index], :])
+            probs = probs[0]
+            legal_moves = state.get_legal_moves
+            illegal_moves = np.ones(probs.shape, dtype=bool)
+            illegal_moves[legal_moves] = False
+            probs[illegal_moves] = -100
+            probs = F.softmax(probs, -1).detach().cpu().numpy()
+        else:
+            probs = None
+            legal_moves = None
+
 
         value = F.softmax(self.model.get_win_output(encoded_s[:, 0, :]), -1).detach().cpu().numpy()[0][1]
-        legal_moves = state.get_legal_moves
-        illegal_moves = np.ones(probs.shape, dtype=bool)
-        illegal_moves[legal_moves] = False
-        probs[illegal_moves] = -100
-        probs = F.softmax(probs, -1).detach().cpu().numpy()
-        return (probs, value, legal_moves)
+        return probs, value, legal_moves
 
     def evaluate_leaf(self, leaf):
-        probs, value, legal_moves = self.get_preds(leaf.state)
-        leaf.expand(probs)
+        probs, value, legal_moves = self.get_preds(leaf)
+        if not leaf.is_terminal:
+            leaf.expand(probs)
         return value
 
     def choose_action(self):

@@ -23,6 +23,7 @@ class UCTNode(object):
         self.state = state
         self.move = move
         self.is_expanded = False
+        self.is_terminal = False
         self.parent = parent
         # self.legal_moves = self.state.get_legal_moves
         self.children = {}
@@ -63,6 +64,8 @@ class UCTNode(object):
         return 1.#nn.evaluate(self.state)[1] * np.sqrt(np.log(self.number_visits)/(1 + self.child_number_visits))
 
     def best_child(self):
+        if self.state.done:
+            return None, None
         values = self.child_Q() + self.child_U()
         legal_moves = self.state.get_legal_moves
         illegal_moves = np.ones(values.shape, dtype=bool)
@@ -77,7 +80,7 @@ class UCTNode(object):
 
     def add_child(self, move):
         # Value will be 0 unless the game is over
-        new_state, value, done = self.state.take_action(move)
+        new_state = self.state.take_action(move)
         self.children[move] = UCTNode(new_state, move = move, parent=self)
 
 
@@ -94,6 +97,9 @@ class UCT():
             node.number_visits += 1
             node.total_value -= 1
             move, value = node.best_child()
+            if move is None:
+                node.is_terminal = True
+                break
             if move not in node.children:
                 node.add_child(move)
             node = node.children[move]
