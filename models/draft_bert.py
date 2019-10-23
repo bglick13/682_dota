@@ -465,7 +465,7 @@ class DraftBert(torch.nn.Module):
                     print(
                         f'Epoch: {epoch}, Step: {i}, Loss: {batch_loss}, Acc: {batch_acc}, Top 5 Acc: {top_5_acc},'
                         f'Matching Acc: {matching_acc}, Win Acc: {win_acc}')
-            torch.save(self, f'draft_bert_pretrain__allpick_checkpoint_{epoch}.torch')
+            torch.save(self, f'../weights/checkpoints/draft_bert_pretrain__allpick_checkpoint_{epoch}.torch')
 
     def pretrain_captains_mode(self, dataset: CaptainsModeDataset, **train_kwargs):
         self.train()
@@ -523,7 +523,7 @@ class DraftBert(torch.nn.Module):
 
                     print(
                         f'Epoch: {epoch}, Step: {i}, Loss: {batch_loss}, Acc: {batch_acc}, Top 5 Acc: {top_5_acc}, Win Acc: {win_acc}')
-            torch.save(self, f'draft_bert_pretrain__captains_mode_checkpoint_{epoch}.torch')
+            torch.save(self, f'../weights/checkpoints/draft_bert_pretrain__captains_mode_checkpoint_{epoch}.torch')
 
     def fit(self, src: torch.LongTensor, tgt: torch.LongTensor, task: DraftBertTasks, **train_kwargs):
         """

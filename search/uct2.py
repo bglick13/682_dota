@@ -55,14 +55,14 @@ class UCTNode(object):
 
     def best_child(self):
         if self.state.done:
-            return None, None
+            return None, None, None
         values = self.child_Q() + self.child_U()
         legal_moves = self.state.get_legal_moves
         illegal_moves = np.ones(values.shape, dtype=bool)
         illegal_moves[legal_moves] = False
         values[illegal_moves] = -np.inf
         best = np.random.choice(np.flatnonzero(np.isclose(values, values.max())))  # This should randomly draw from tied best
-        return best, values[best]
+        return best, values[best], values
 
     def expand(self, child_priors):
         self.is_expanded = True
@@ -86,7 +86,7 @@ class UCT():
         while node.is_expanded:
             node.number_visits += 1
             node.total_value -= 1
-            move, value = node.best_child()
+            move, value, values = node.best_child()
             if move is None:
                 node.is_terminal = True
                 break

@@ -7,7 +7,6 @@ import asyncio
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 import functools
 from draft.draft_env import CaptainModeState
-from aiomultiprocess import Pool
 import docker
 
 client = docker.from_env()

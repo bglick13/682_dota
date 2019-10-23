@@ -13,7 +13,7 @@ if __name__ == '__main__':
                   'D_Ban', 'R_Ban',
                   'R_Pick', 'D_Pick']
 
-    model: DraftBert = torch.load('../draft_bert_pretrain_all_pick.torch')
+    model: DraftBert = torch.load('../weights/draft_bert_pretrain_all_pick.torch')
     model.has_trained_on_all_pick = True
     assert model.has_trained_on_all_pick, 'Pre-train on all-pick dataset before training on captains mode'
     model.masked_output.requires_grad = False
@@ -33,16 +33,16 @@ if __name__ == '__main__':
     file_name = '../tmp/test_draft_order_df_3135389989.pkl'
     with open(file_name, 'rb') as f:
         d = pickle.load(f)
-    if os.path.isfile('captains_mode_dataset.pickle'):
-        with open('captains_mode_dataset.pickle', 'rb') as f:
+    if os.path.isfile('../data/captains_mode_dataset.pickle'):
+        with open('../data/captains_mode_dataset.pickle', 'rb') as f:
             dataset: CaptainsModeDataset = pickle.load(f)
     else:
         dataset = CaptainsModeDataset(file_name, hero_ids=model.hero_ids, label_encoder=model.le, sep=model.sep,
                                       cls=model.cls, mask=model.mask_idx)
-        with open('captains_mode_dataset.pickle', 'wb') as f:
+        with open('../data/captains_mode_dataset.pickle', 'wb') as f:
             pickle.dump(dataset, f)
 
     model.cuda()
 
     model.pretrain_captains_mode(dataset, **{'epochs': int(100), 'lr': 1.0e-4, 'batch_size': 64, 'mask_pct': 0.1})
-    torch.save(model, '../draft_bert_pretrain_captains_mode.torch')
+    torch.save(model, '../weights/draft_bert_pretrain_captains_mode.torch')

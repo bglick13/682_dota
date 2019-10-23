@@ -2,12 +2,10 @@ import numpy as np
 import torch
 from models.draft_bert import DraftBert
 from collections import deque
-
+from typing import Union
+from draft.draft_env import DraftState
 from search.uct2 import UCTNode, UCT
 from torch.functional import F
-
-cuda = torch.cuda.is_available()
-
 
 class DummyAgent(torch.nn.Module):
     def __init__(self):
@@ -42,16 +40,15 @@ class DummyAgent(torch.nn.Module):
 
 
 class DraftAgent(DummyAgent):
-    def __init__(self, model: DraftBert, memory_size, pick_first):
+    def __init__(self, model: DraftBert, pick_first):
         super().__init__()
         self.model: DraftBert = model
-        if cuda:
+        if torch.cuda.is_available():
             self.model.cuda()
         self.solver = None
         self.model.masked_output.requires_grad = False
         self.model.matching_output.requires_grad = False
         self.best_model = model
-        self.memory = deque(maxlen=memory_size)
         self.action_size = model.n_heros
         self.pick_first = pick_first
 
@@ -97,17 +94,24 @@ class DraftAgent(DummyAgent):
 
         for _ in range(num_reads):
             self.simulate()
-        action, value = self.choose_action()
-        return action, value
+        action, value, values = self.root.best_child()
+        next_state = state.take_action(action)
+        nn_value = self.get_preds(next_state)[1]
+        p = F.softmax(torch.FloatTensor(values), -1).numpy()
+        return action, value, p, nn_value
 
-    def get_preds(self, leaf):
-        state = leaf.state
+    def get_preds(self, leaf: Union[UCTNode, DraftState]):
+        if isinstance(leaf, UCTNode):
+            state = leaf.state
+        else:
+            state = leaf
         s = state.state
         s_in = torch.LongTensor([s])
-        mask = torch.zeros_like(s_in)
+        if torch.cuda.is_available():
+            s_in = s_in.cuda()
 
-        encoded_s = self.model.forward(s_in, mask)
-        if leaf.state.next_pick_index < 22:
+        encoded_s = self.model.forward(s_in)
+        if state.next_pick_index < 22:
             probs = self.model.get_next_hero_output(encoded_s[:, state.draft_order[state.next_pick_index], :])
             probs = probs[0]
             legal_moves = state.get_legal_moves
@@ -130,6 +134,6 @@ class DraftAgent(DummyAgent):
             leaf.expand(probs)
         return value
 
-    def choose_action(self):
-        action, value = self.root.best_child()
-        return action, value
+    # def choose_action(self):
+    #     action, value = self.root.best_child()
+    #     return action, value

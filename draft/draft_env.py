@@ -17,20 +17,10 @@ import uuid
 import pickle
 import docker
 import copy
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 
-pd.set_option('display.max_rows', 200)
-pd.set_option('display.max_columns', 100)
-
-
-# class DraftState:
-#     def __init__(self, draft_state, draft_order, next_pick_index):
-#         self.draft_state = draft_state
-#         self.draft_order = draft_order
-#         self.next_pick_index = next_pick_index
 
 class CaptainModeDraft:
-    def __init__(self, heros: pd.DataFrame):
+    def __init__(self, heros: pd.DataFrame, port: int):
         self.draft_order = np.array([1, 13, 2, 14, 3, 15,
                                      4, 16, 5, 17,
                                      6, 18, 7, 19,
@@ -39,10 +29,11 @@ class CaptainModeDraft:
                                      11, 23])
         self.next_pick_index = 0
         self.heros = heros
+        self.port = port
         self.SEP = heros.loc[heros['name'] == 'SEP', 'model_id'].values[0]
         self.MASK = heros.loc[heros['name'] == 'MASK', 'model_id'].values[0]
         self.CLS = heros.loc[heros['name'] == 'CLS', 'model_id'].values[0]
-        self.state = DraftState(np.ones(25) * self.MASK, self.next_pick_index, 13337, heros)
+        self.state = DraftState(np.ones(25) * self.MASK, self.next_pick_index, self.port, heros)
 
     def reset(self):
         self.next_pick_index = 0
@@ -53,7 +44,7 @@ class CaptainModeDraft:
         self.next_pick_index += 1
         self.state = next_state
 
-        value = 0
+        value = -1
         done = 0
 
         if self.state.done:
@@ -201,26 +192,15 @@ class DraftState(ABC):
         print('launched container')
         time.sleep(10)
         print(container.logs())
-        # response = dota_service.reset(config)
 
     def get_winner(self):
         assert self.done, 'Draft is not complete'
-        # channel_dota = Channel('127.0.0.1', self.port, loop=asyncio.get_event_loop())
-        # dota_service = DotaServiceStub(channel_dota)
-
-        # game = Game(dota_service=dota_service, max_dota_time=max_dota_time)
-        # UUID in game.dota_service.dota_game.game_id
-        # game_id = uuid.uuid1()
-        game_id = str(time.time())
+        game_id = str(uuid.uuid1())
 
         config = self._get_game_config()
         print(f"Calling play for game id: {game_id}")
-        # print(channel_dota.__dict__)
-        # try:
+
         self._play(config=config, game_id=game_id)
-        # except Exception as e:
-        #     print(e)
-            # channel_dota.close()
         log_file_path = f'../{game_id}/{game_id}/bots/console.log'
         time.sleep(10)
         with open(log_file_path, 'r') as f:
@@ -239,7 +219,7 @@ class DraftState(ABC):
                         return 1
                     elif 'npc_dota_goodguys_fort destroyed' in line:
                         print(f'Dire Victory')
-                        return -1
+                        return 0
 
     def __str__(self):
         radiant = self.heros.loc[self.heros['model_id'].isin(self.radiant), 'localized_name']
@@ -250,75 +230,3 @@ class DraftState(ABC):
         out += f'\nRadiant\n{radiant}\nDire\n{dire}'
 
         return out
-
-# class AllPickState(DraftState):
-#     def __init__(self, heros: pd.DataFrame):
-#         super().__init__(heros)
-#         self.draft_order = np.array([4,
-#                             16, 17,
-#                             5, 8,
-#                             20, 21,
-#                             9, 11,
-#                             23])
-#
-#     @property
-#     def done(self):
-#         return self.next_pick_index >= 10
-#
-#     @property
-#     def player_turn(self):
-#         return self.next_pick_index >= 5
-#
-#     @property
-#     def state(self):
-#         """
-#         Override to mask out the ban indices
-#
-#         :return:
-#         """
-#         return np.concatenate([self.CLS],  # Always start with the CLS token - index [0]
-#
-#                               # Radiant - starts at index 1
-#                               np.ones(3) * self.MASK,  # First wave of 3 bans - indices [1, 2, 3]
-#                               self._current_state[:2],  # First two picks - indices [4, 5]
-#                               np.ones(2) * self.MASK,  # Two more bans - indices [6, 7]
-#                               self._current_state[2:4],  # Two more picks - indices [8, 9]
-#                               np.ones(1) * self.MASK,  # Final ban - index [10]
-#                               self._current_state[4:5],  # Final pick - index [11]
-#                               [self.SEP],  # Index [12]
-#
-#                               # Dire - starts at index 13
-#                               np.ones(3) * self.MASK,  # First wave of 3 bans - indices [13, 14, 15]
-#                               self._current_state[5:7],  # First two picks - indices [16, 17]
-#                               np.ones(2) * self.MASK,  # Two more bans - indices [18, 19]
-#                               self._current_state[7:9],  # Two more picks - indices [20, 21]
-#                               np.ones(1) * self.MASK,  # Final ban - index [22]
-#                               self._current_state[9:],  # Final pick - index [23]
-#                               [self.SEP]  # Index [24]
-#                               )
-#
-#
-# class CaptainModeState(DraftState):
-#     def __init__(self, heros: pd.DataFrame, port):
-#         super().__init__(heros, port)
-#         self.draft_order = np.array([1, 13, 2, 14, 3, 15,
-#                             4, 16, 5, 17,
-#                             6, 18, 7, 19,
-#                             8, 20, 9, 21,
-#                             10, 22,
-#                             11, 23])
-#
-#     @property
-#     def player_turn(self):
-#         """
-#         Returns 1 if Dire, 0 if Radiant
-#
-#         :return:
-#         """
-#
-#         return self.next_pick_index >= 13
-#
-#     @property
-#     def done(self):
-#         return self.next_pick_index > 21
-
