@@ -83,7 +83,7 @@ class UCTNode(object):
 
 class UCT():
     def __init__(self, state, num_rollouts):
-        # I'm passing in instantiated nodes instead of just states, is that okay?
+        # I'm passing in instantiated nodes instead of just states, is that okay?       -- Yes
         self.root = state
         self.num_rollouts = num_rollouts
 
@@ -98,7 +98,7 @@ class UCT():
                 node.add_child(move)
             node = node.children[move]
 
-        # TODO: @connor can I just return the node here and then evaluate and expand from a function in 'agent'?
+        # TODO: @connor can I just return the node here and then evaluate and expand from a function in 'agent'?         -- Yes
         return node
         # child_priors, value_estimate = nn.evaluate(node.state)
         # node.expand(child_priors)
