@@ -2,15 +2,12 @@ import numpy as np
 import torch
 from models.draft_bert import DraftBert
 from collections import deque
-import asyncio
-import multiprocessing
-from typing import Union
-# from solvers.uct import DummyNode, UCTNode
-# from solvers.mcts2 import MCTS, Node, Edge
-from search.uct2 import UCTNode, UCT, DummyNode
+
+from search.uct2 import UCTNode, UCT
 from torch.functional import F
 
 cuda = torch.cuda.is_available()
+
 
 class DummyAgent(torch.nn.Module):
     def __init__(self):
@@ -35,7 +32,6 @@ class DummyAgent(torch.nn.Module):
             actions.append(a)
 
             env.pick(a)
-        # loop = asyncio.get_event_loop()
         winner = env.get_winner()
         values = np.zeros_like(states)
         if winner == 1:
@@ -46,7 +42,7 @@ class DummyAgent(torch.nn.Module):
 
 
 class DraftAgent(DummyAgent):
-    def __init__(self, model: DraftBert, memory_size):
+    def __init__(self, model: DraftBert, memory_size, pick_first):
         super().__init__()
         self.model: DraftBert = model
         if cuda:
@@ -57,6 +53,7 @@ class DraftAgent(DummyAgent):
         self.best_model = model
         self.memory = deque(maxlen=memory_size)
         self.action_size = model.n_heros
+        self.pick_first = pick_first
 
     def simulate(self):
         """
@@ -96,18 +93,8 @@ class DraftAgent(DummyAgent):
             self.root = UCTNode(state, action, self.root)
             self.solver.root = self.root
 
-        # root = UCTNode(state, move=prior_move, parent=parent)
         for _ in range(num_reads):
             self.simulate()
-            # leaf = root.select_leaf()
-            # child_priors, value_estimate = (self.model.get_next_hero_output(state),
-            #                                 self.model.get_win_output(state))
-            # child_priors = child_priors.detach().cpu().numpy()[0]
-            # illegal_moves = list(set(range(len(child_priors))) - set(legal_moves))
-            # child_priors[illegal_moves] = 0
-            # value_estimate = value_estimate.detach().cpu().numpy()[0, 1]
-            # leaf.expand(child_priors)
-            # leaf.backup(value_estimate)
         action, value = self.choose_action()
         return action, value
 
@@ -130,8 +117,9 @@ class DraftAgent(DummyAgent):
             probs = None
             legal_moves = None
 
-
-        value = F.softmax(self.model.get_win_output(encoded_s[:, 0, :]), -1).detach().cpu().numpy()[0][1]
+        # This should be all it takes to make sure the network is always player-centric
+        value = F.softmax(self.model.get_win_output(encoded_s[:, 0, :]), -1).detach().cpu().numpy(
+            )[0][int(self.pick_first)]
         return probs, value, legal_moves
 
     def evaluate_leaf(self, leaf):

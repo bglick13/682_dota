@@ -1,15 +1,6 @@
 import collections
-import random
-import math
-
-from IPython import embed
-
 import numpy as np
-import time
 
-# import draft.draft_env
-# import models.draft_agent
-# import models.draft_bert
 
 class DummyNode(object):
     def __init__(self):
@@ -106,9 +97,6 @@ class UCT():
 
         # TODO: @connor can I just return the node here and then evaluate and expand from a function in 'agent'?
         return node
-        # child_priors, value_estimate = nn.evaluate(node.state)
-        # node.expand(child_priors)
-        # return value_estimate
 
     def backup(self, node, value_estimate):
         while node.parent is not None:
