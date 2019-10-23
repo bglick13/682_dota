@@ -49,9 +49,19 @@ class CaptainModeDraft:
         return self.state
 
     def step(self, action):
-        next_state, value, done = self.state.take_action(action)
+        next_state = self.state.take_action(action)
         self.next_pick_index += 1
         self.state = next_state
+
+        value = 0
+        done = 0
+
+        if self.state.done:
+            print('Final State:\n')
+            print(self.state)
+            value = self.state.get_winner()
+            done = 1
+
         return next_state, value, done
 
 
@@ -122,7 +132,7 @@ class DraftState(ABC):
 
     @property
     def dire_bans(self):
-        return self.game_state[[13, 14, 15, 18, 19], 22]
+        return self.game_state[[13, 14, 15, 18, 19, 22]]
 
     @property
     def radiant_dota_ids(self):
@@ -147,13 +157,7 @@ class DraftState(ABC):
         new_state[self.draft_order[self.next_pick_index]] = action
         new_state = DraftState(new_state, self.next_pick_index+1, self.port, self.heros)
 
-        value = 0
-        done = 0
-
-        if new_state.done:
-            value = new_state.get_winner()
-            done = 1
-        return new_state, value, done
+        return new_state
 
     def _get_game_config(self):
         radiant_dota_ids = self.heros.loc[self.heros['model_id'].isin(self.radiant), 'id'].values

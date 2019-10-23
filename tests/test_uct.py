@@ -1,9 +1,7 @@
-from draft.draft_env import CaptainModeDraft, DraftState
+from draft.draft_env import CaptainModeDraft
 from models.draft_agent import DraftAgent
-import numpy as np
 import pandas as pd
-import asyncio
-import pickle
+
 import torch
 
 
@@ -17,27 +15,24 @@ if __name__ == '__main__':
     model = torch.load('../draft_bert_pretrain.torch', map_location=torch.device('cpu'))
     print('model loaded')
 
-    radiant_player: DraftAgent = DraftAgent(model=model, memory_size=100000)
-    dire_player: DraftAgent = DraftAgent(model=model, memory_size=100000)
+    radiant_player: DraftAgent = DraftAgent(model=model, memory_size=100000, pick_first=True)
+    dire_player: DraftAgent = DraftAgent(model=model, memory_size=100000, pick_first=False)
     state = draft.reset()
     turn = 0
     action = -1
-    try:
-        while True:
-            if draft.draft_order[draft.next_pick_index] < 13:
-                action, value = radiant_player.act(state, action)
-            else:
-                action, value = dire_player.act(state, action)
-            state, value, done = draft.step(action)
-            print(f'\nTurn {turn}:\n{state}')
-            if value == -1:  # Dire victory
-                print('Dire victory')
-                break
-            elif value == 1:
-                print('Radiant Victory')
-                break
-            turn += 1
-    except:
-        print('Final game state:\n')
-        print(state)
+
+    while True:
+        if draft.draft_order[draft.next_pick_index] < 13:
+            action, nn_value = radiant_player.act(state, action, num_reads=100)
+        else:
+            action, nn_value = dire_player.act(state, action, num_reads=100)
+        state, value, done = draft.step(action)
+        print(f'\nTurn {turn}:\nAction: {action}, Value: {nn_value}\n{state}')
+        if value == -1:  # Dire victory
+            print('Dire victory')
+            break
+        elif value == 1:
+            print('Radiant Victory')
+            break
+        turn += 1
 

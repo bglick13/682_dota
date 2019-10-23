@@ -1,15 +1,6 @@
 import collections
-import random
-import math
-
-from IPython import embed
-
 import numpy as np
-import time
 
-# import draft.draft_env
-# import models.draft_agent
-# import models.draft_bert
 
 class DummyNode(object):
     def __init__(self):
@@ -23,6 +14,7 @@ class UCTNode(object):
         self.state = state
         self.move = move
         self.is_expanded = False
+        self.is_terminal = False
         self.parent = parent
         # self.legal_moves = self.state.get_legal_moves
         self.children = {}
@@ -63,6 +55,8 @@ class UCTNode(object):
         return 1.#nn.evaluate(self.state)[1] * np.sqrt(np.log(self.number_visits)/(1 + self.child_number_visits))
 
     def best_child(self):
+        if self.state.done:
+            return None, None
         values = self.child_Q() + self.child_U()
         legal_moves = self.state.get_legal_moves
         illegal_moves = np.ones(values.shape, dtype=bool)
@@ -77,7 +71,7 @@ class UCTNode(object):
 
     def add_child(self, move):
         # Value will be 0 unless the game is over
-        new_state, value, done = self.state.take_action(move)
+        new_state = self.state.take_action(move)
         self.children[move] = UCTNode(new_state, move = move, parent=self)
 
 
@@ -94,15 +88,15 @@ class UCT():
             node.number_visits += 1
             node.total_value -= 1
             move, value = node.best_child()
+            if move is None:
+                node.is_terminal = True
+                break
             if move not in node.children:
                 node.add_child(move)
             node = node.children[move]
 
         # TODO: @connor can I just return the node here and then evaluate and expand from a function in 'agent'?         -- Yes
         return node
-        # child_priors, value_estimate = nn.evaluate(node.state)
-        # node.expand(child_priors)
-        # return value_estimate
 
     def backup(self, node, value_estimate):
         while node.parent is not None:
