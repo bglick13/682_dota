@@ -51,7 +51,7 @@ class UCTNode(object):
         return self.child_total_value / (1 + self.child_number_visits)
 
     def child_U(self): # 1.25 is the c_puct term that many papers use. It controls exploration.
-        return 1.25 * self.child_priors * np.sqrt(np.log(self.number_visits)/(1 + self.child_number_visits))
+        return 1.25 * self.child_priors * np.sqrt(np.log(self.number_visits + 1)/(1 + self.child_number_visits))
 
     def best_child(self):
         if self.state.done:
@@ -61,7 +61,7 @@ class UCTNode(object):
         illegal_moves = np.ones(values.shape, dtype=bool)
         illegal_moves[legal_moves] = False
         values[illegal_moves] = -np.inf
-        best = np.random.choice(np.flatnonzero(values = values.max())) # This should randomly draw from tied best
+        best = np.random.choice(np.flatnonzero(values == values.max()))  # This should randomly draw from tied best
         return best, values[best]
 
     def expand(self, child_priors):

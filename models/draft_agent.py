@@ -88,9 +88,11 @@ class DraftAgent(DummyAgent):
     def act(self, state, action=-1, num_reads=100):
         if self.solver is None:
             self.root = UCTNode(state, action)
+            # self.root.number_visits += 1
             self.solver = UCT(self.root, num_reads)
         else:
             self.root = UCTNode(state, action, self.root)
+            # self.root.number_visits += 1
             self.solver.root = self.root
 
         for _ in range(num_reads):
