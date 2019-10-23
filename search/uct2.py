@@ -61,7 +61,7 @@ class UCTNode(object):
         illegal_moves = np.ones(values.shape, dtype=bool)
         illegal_moves[legal_moves] = False
         values[illegal_moves] = -np.inf
-        best = np.random.choice(np.flatnonzero(values == values.max()))  # This should randomly draw from tied best
+        best = np.random.choice(np.flatnonzero(np.isclose(values, values.max())))  # This should randomly draw from tied best
         return best, values[best]
 
     def expand(self, child_priors):
