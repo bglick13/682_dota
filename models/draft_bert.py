@@ -20,6 +20,95 @@ class DraftBertTasks(Enum):
     WIN_PREDICTION = 3
 
 
+def subsequent_mask(size):
+    "Mask out subsequent positions."
+    attn_shape = (1, size, size)
+    subsequent_mask = np.triu(np.ones(attn_shape, dtype=bool), k=1).astype('float32')
+    return subsequent_mask
+
+
+class CaptainsModeDataset(Dataset):
+    def __init__(self, df: Union[pd.DataFrame, str], hero_ids: pd.DataFrame, label_encoder: LabelEncoder,
+                 sep: int, cls: int, mask: int, test_pct: float = 0):
+        if isinstance(df, pd.DataFrame):
+            df = df
+        elif isinstance(df, str):
+            df = pd.read_pickle(df)
+
+        self.hero_ids = hero_ids
+        self.le = label_encoder
+        self.test_pct = test_pct
+        self.SEP = sep
+        self.CLS = cls
+        self.MASK = int(mask)
+
+        self.matchups = []
+        self.wins = []
+        self.mask_idxs = np.append(np.arange(1, 12), np.arange(13, 24))
+        for key, grp in df.groupby('match_seq_num'):
+            if len(grp) < 22:
+                continue
+            first_pick_heros = grp['hero_id'].values[[0, 2, 4, 6, 9, 11, 13, 15, 17, 19, 20]]
+            second_pick_heros = grp['hero_id'].values[[1, 3, 5, 7, 8, 10, 12, 14, 16, 18, 21]]
+
+            # Transform from Dota hero ids to model hero ids
+            first_pick_heros = self.le.transform(first_pick_heros)
+            second_pick_heros = self.le.transform(second_pick_heros)
+
+            heros = np.concatenate((#[self.CLS],  # Always start with the CLS token - index [0]
+                                    # Radiant - starts at index 1
+                                    first_pick_heros,
+                                    #[self.SEP],  # Index [12]
+                                    # Dire - starts at index 13
+                                    second_pick_heros,
+                                    #[self.SEP]  # Index [24])
+                                    ))
+            self.matchups.append(heros)
+            first_pick_win = (grp['team'].values[0] - int(grp['radiant_win'].values[0])) != 0
+            self.wins.append(first_pick_win)
+        self.matchups = np.array(self.matchups)
+        self.wins = np.array(self.wins)
+
+        if self.test_pct > 0:
+            self.test_idxs = np.random.choice(range(len(self.matchups)), int(len(self.matchups) * self.test_pct),
+                                              replace=False)
+            self.train_idxs = np.array(list(set(range(len(self.matchups))) - set(self.test_idxs)))
+
+        else:
+            self.test_idxs = []
+            self.train_idxs = np.arange(len(self.matchups))
+        self.train = True
+
+    def __getitem__(self, index):
+        if self.train:
+            index = self.train_idxs[index]
+        else:
+            index = self.test_idxs[index]
+        matchup = self.matchups[index]
+        t = copy.deepcopy(matchup)
+        matchup = np.tile(matchup, (22, 1))
+
+        m = copy.deepcopy(matchup)
+        mask = subsequent_mask(23).squeeze()
+        mask = mask[:-1, 1:]
+        # _m = m[:, self.mask_idxs]
+        m[mask.astype(bool)] = int(self.MASK)
+        m = np.hstack((np.ones((22, 1)) * self.CLS,
+                       m[:, :12],
+                       np.ones((22, 1)) * self.SEP,
+                       m[:, 12:],
+                       np.ones((22, 1)) * self.SEP))
+        m = torch.LongTensor(m)
+
+        return m, t, torch.LongTensor([self.wins[index]]).repeat(22)
+
+    def __len__(self):
+        if self.train:
+            return len(self.train_idxs)
+        else:
+            return len(self.test_idxs)
+
+
 class AllPickDataset(Dataset):
     def __init__(self, g: Union[nx.Graph, str], hero_ids: pd.DataFrame, test_pct: float = 0, mask_pct=0.1):
         if isinstance(g, nx.Graph):
@@ -142,7 +231,6 @@ class AllPickDataset(Dataset):
                 torch.LongTensor([self.wins[index]]),
                 mask)
 
-
     def __len__(self):
         if self.train:
             return len(self.train_idxs)
@@ -219,9 +307,16 @@ class DraftBert(torch.nn.Module):
                                                    torch.nn.Linear(out_ff_dim, n_heros))
 
         dictionary_size = n_heros
-        self.mask_idx = int(mask_idx)
-        self.   hero_embeddings = torch.nn.Embedding(dictionary_size, embedding_dim, padding_idx=int(mask_idx))
+        self.hero_embeddings = torch.nn.Embedding(dictionary_size, embedding_dim, padding_idx=int(mask_idx))
         self.pe = PositionalEncoding(embedding_dim, 0, max_len=25)
+
+        self.mask_idx = int(mask_idx)
+        self.hero_ids = None
+        self.sep = None
+        self.cls = None
+        self.le = None
+        self.has_trained_on_all_pick = False
+        self.has_trained_on_captains_mode = False
 
     def embed_lineup(self, lineup):
         if isinstance(lineup, (list, np.ndarray)):
@@ -232,7 +327,7 @@ class DraftBert(torch.nn.Module):
             lineup = lineup.cuda()
         return self.hero_embeddings(lineup)
 
-    def forward(self, src: torch.LongTensor, mask: torch.BoolTensor):
+    def forward(self, src: torch.LongTensor, mask: torch.BoolTensor = None):
         """
 
         :param src: shape (batch_size, seq_length, 1) a sequence of hero_ids representing a draft
@@ -242,9 +337,10 @@ class DraftBert(torch.nn.Module):
         """
 
         # First, we encode the src sequence into the latent hero representation
-        src[mask] = torch.LongTensor([self.mask_idx] * src.shape[0])
-        if cuda:
-            src = src.cuda()  # Set the masked values to the embedding pad idx
+        if mask is not None:
+            src[mask] = torch.LongTensor([self.mask_idx] * src.shape[0])
+        # if cuda:
+        #     src = src.cuda()  # Set the masked values to the embedding pad idx
         src = self.hero_embeddings(src)
         src = src + np.sqrt(self.embedding_dim)
         src = self.pe(src)
@@ -291,6 +387,12 @@ class DraftBert(torch.nn.Module):
         return mask
 
     def pretrain_all_pick(self, dataset: AllPickDataset, **train_kwargs):
+        self.has_trained_on_all_pick = True
+        self.hero_ids = dataset.hero_ids
+        self.cls = dataset.CLS
+        self.sep = dataset.SEP
+        self.le = dataset.le
+
         self.train()
         lr = train_kwargs.get('lr', 0.001)
         batch_size = train_kwargs.get('batch_size', 512)
@@ -364,6 +466,64 @@ class DraftBert(torch.nn.Module):
                         f'Epoch: {epoch}, Step: {i}, Loss: {batch_loss}, Acc: {batch_acc}, Top 5 Acc: {top_5_acc},'
                         f'Matching Acc: {matching_acc}, Win Acc: {win_acc}')
             torch.save(self, f'draft_bert_pretrain__allpick_checkpoint_{epoch}.torch')
+
+    def pretrain_captains_mode(self, dataset: CaptainsModeDataset, **train_kwargs):
+        self.train()
+        lr = train_kwargs.get('lr', 0.001)
+        batch_size = train_kwargs.get('batch_size', 512)
+        epochs = train_kwargs.get('epochs', 100)
+        print_iter = train_kwargs.get('print_iter', 100)
+
+        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4)
+
+        opt = torch.optim.Adam(self.parameters(), lr=lr)
+        next_hero_loss = torch.nn.CrossEntropyLoss(reduction='mean')
+        win_loss = torch.nn.CrossEntropyLoss(reduction='mean')
+        for epoch in tqdm(range(epochs)):
+            for i, batch in tqdm(enumerate(dataloader)):
+                opt.zero_grad()
+
+                src_batch = batch[0]
+                tgt_batch = batch[1]
+                win_batch = batch[2]
+
+                src_batch = src_batch.reshape(-1, 25)
+                tgt_batch = tgt_batch.reshape(-1, 1)
+                win_batch = win_batch.reshape(-1, 1)
+
+                if cuda:
+                    src_batch = src_batch.cuda()
+                    tgt_batch = tgt_batch.cuda()
+                    win_batch = win_batch.cuda()
+
+                out = self.forward(src_batch)  # -> shape (batch_size, sequence_length, embedding_dim)
+                to_predict = (src_batch == self.mask_idx).int().detach().cpu().numpy().argmax(-1)
+                to_predict = out[range(len(out)), to_predict]
+                mask_pred = self.get_masked_output(to_predict)
+
+                mask_batch_loss = next_hero_loss(mask_pred, tgt_batch.squeeze())
+
+                win_pred = self.get_win_output(out[:, 0, :])
+                batch_win_loss = win_loss(win_pred, win_batch.squeeze())
+
+                batch_loss = (mask_batch_loss + batch_win_loss) / 2.
+                batch_loss.backward()
+                opt.step()
+
+                if i == 0 or (i + 1) % print_iter == 0:
+                    batch_acc = (
+                                mask_pred.detach().cpu().numpy().argmax(1) == tgt_batch.detach().cpu().numpy()).astype(
+                        int).mean()
+                    top_5_pred = np.argsort(mask_pred.detach().cpu().numpy(), axis=1)[:, -5:]
+                    top_5_acc = np.array(
+                        [t in p for t, p in zip(tgt_batch.detach().cpu().numpy(), top_5_pred)]).astype(int).mean()
+
+                    win_acc = (win_pred.detach().cpu().numpy().argmax(
+                        1) == win_batch.squeeze().detach().cpu().numpy()).astype(int).mean()
+
+                    print(
+                        f'Epoch: {epoch}, Step: {i}, Loss: {batch_loss}, Acc: {batch_acc}, Top 5 Acc: {top_5_acc}, Win Acc: {win_acc}')
+            torch.save(self, f'draft_bert_pretrain__captains_mode_checkpoint_{epoch}.torch')
 
     def fit(self, src: torch.LongTensor, tgt: torch.LongTensor, task: DraftBertTasks, **train_kwargs):
         """
