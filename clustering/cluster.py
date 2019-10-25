@@ -1,7 +1,8 @@
-import os, sys, argparse
+import os, sys, argparse, json
 sys.path.append(os.path.abspath('..'))
 
 import pickle
+import pandas as pd
 import numpy as np
 import torch, umap
 
@@ -14,10 +15,13 @@ from sklearn.preprocessing import StandardScaler
 
 from matplotlib import cm, offsetbox
 from matplotlib import pyplot as plt
-from matplotlib.colors import ListedColormap, LinearSegmentedColormap
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib.colors import ListedColormap, LinearSegmentedColormap, CSS4_COLORS
 
-def generate_clustering(file, algorithm, reduction):
-	embeddings = pickle.load( open(file, mode = 'rb'), encoding = 'bytes')
+def generate_clustering(embeddings, nodes, algorithm, reduction):
+	embeddings = pickle.load( open(embeddings, mode = 'rb'), encoding = 'bytes')
+	nodes = pickle.load( open(nodes, mode = 'rb'), encoding = 'bytes')
+	hero_ids = pd.DataFrame(data = json.load( open( os.path.join('..', 'const', 'hero_ids.json'), mode='rb')))
 
 	X = embeddings.sum(axis = 2)
 
@@ -25,42 +29,64 @@ def generate_clustering(file, algorithm, reduction):
 	if algorithm == 'kmeans':
 		clustering = KMeans(n_clusters = 5, random_state=0).fit(X)
 	elif algorithm == 'dbscan':
-		clustering = DBSCAN(eps=3, min_samples=10)
+		tmp = (X - np.max(X,0))/(np.max(X,0) - np.min(X,0))
+		clustering = DBSCAN(eps=.125, min_samples=10).fit(tmp)
 	elif algorithm == 'spectral':
 		clustering = SpectralClustering(n_clusters = 5, assign_labels='discretize', random_state=0).fit(X)
 
 	y = clustering.labels_
 
-	X_tsne = TSNE(n_components=3, random_state=0).fit_transform(X)
-	x_min, x_max = np.min(X_tsne, 0), np.max(X_tsne, 0)
-	X_tight = (X_tsne - x_min) / (x_max - x_min)
+	if reduction == 'tsne':
+		X_tsne = TSNE(n_components=3, random_state=0).fit_transform(X)
+		x_min, x_max = np.min(X_tsne, 0), np.max(X_tsne, 0)
+		X_tight = (X_tsne - x_min) / (x_max - x_min)
 
-	plt.figure()
-	ax = plt.subplot(111)
-	for i in range(X.shape[0]):
-		plt.text(X_tight[i, 0], X_tight[i, 1], str(y[i]),
-				 color = plt.cm.Set1(y[i]/10.),
-				 fontdict={'weight': 'bold', 'size': 9})
+		colors = np.random.choice(list(CSS4_COLORS.keys()), len(np.unique(y)))
 
-	if hasattr(offsetbox, 'AnnotationBbox'):
-		shown_images = np.array([[1., 1.]])
-		for i in range(X.shape[0]):
-			dist = np.sum((X_tight[i] - shown_images) ** 2, 1)
-			if np.min(dist) < 4e-3:
-				continue
-			shown_images = np.r_[shown_images, [X_tight[i]]]
+		fig = plt.figure()
+		ax = fig.add_subplot(111, projection='3d')
+		for i in range(len(colors)):
+			tmp = X_tight[y == i]
+			ax.scatter(tmp[:,:1], tmp[:,1:2], tmp[:,2:3], c = colors[i])
 
-	plt.xticks([]), plt.yticks([])
-	plt.show()
+		plt.xticks([]), plt.yticks([])
+		plt.show()
+
+	cluster_samples = []
+
+	for cluster in np.unique(y):
+		indices = np.arange(y.shape[0])
+		if len(indices) < 5:
+			cluster_samples.append(nodes[indices])
+		else:
+			random_sampling = np.random.choice(indices[y == cluster], 5)
+			cluster_samples.append(nodes[random_sampling])
+
+	to_return = []
+	for cluster in cluster_samples:
+		comp = []
+		for sample in cluster:
+			heros = []
+			for hero in sample:
+				heros.append(hero_ids[hero_ids['id'] == hero]['name'].item())
+			comp.append(heros)
+		to_return.append(comp)
+
+	print(to_return)
+
+	pickle.dump(np.array(to_return), open('hero_clusters.pkl', mode='wb'), protocol=pickle.HIGHEST_PROTOCOL)
+
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument(
-		'--embedding', '-e', required = True)
+		'--embeddings', '-e', required = True)
+	parser.add_argument(
+		'--nodes', '-n', required = True)
 	parser.add_argument(
 		'--algorithm', '-a', required = False, default = 'kmeans')
 	parser.add_argument(
-		'--reduction', '-r', required = False, default = 'TSNE')
+		'--reduction', '-r', required = False, default = 'None')
 	args = parser.parse_args()
 
-	generate_clustering(args.embedding, args.algorithm, args.reduction)
+	generate_clustering(args.embeddings, args.nodes, args.algorithm, args.reduction)
