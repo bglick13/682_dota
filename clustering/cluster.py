@@ -18,6 +18,7 @@ from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.colors import ListedColormap, LinearSegmentedColormap, CSS4_COLORS
 
+
 def generate_clustering(embeddings, nodes, algorithm, reduction):
 	embeddings = pickle.load( open(embeddings, mode = 'rb'), encoding = 'bytes')
 	nodes = pickle.load( open(nodes, mode = 'rb'), encoding = 'bytes')
@@ -80,13 +81,13 @@ def generate_clustering(embeddings, nodes, algorithm, reduction):
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument(
-		'--embeddings', '-e', required = True)
+		'--embeddings', '-e', required = True, default= '../data/clustering/10k_embed.pickle')
 	parser.add_argument(
-		'--nodes', '-n', required = True)
+		'--nodes', '-n', required = True, default = '../data/clustering/10k_nodes.pickle')
 	parser.add_argument(
 		'--algorithm', '-a', required = False, default = 'kmeans')
 	parser.add_argument(
-		'--reduction', '-r', required = False, default = 'None')
+		'--reduction', '-r', required = False, default = 'tsne')
 	args = parser.parse_args()
 
 	generate_clustering(args.embeddings, args.nodes, args.algorithm, args.reduction)
