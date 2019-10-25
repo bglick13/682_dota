@@ -7,6 +7,7 @@ from typing import List
 from collections import deque
 import pickle
 from multiprocessing import Pool
+import time
 
 
 def do_rollout(model, hero_ids, port, verbose=False):
@@ -28,26 +29,25 @@ def do_rollout(model, hero_ids, port, verbose=False):
     all_actions = []
     all_states = []
 
-    try:
-        while True:
-            if draft.draft_order[draft.next_pick_index] < 13:
-                action, mcts_value, p, nn_value = players[0].act(state, action, num_reads=100)
-            else:
-                action, mcts_value, p, nn_value = players[1].act(state, action, num_reads=100)
-            all_states.append(state)
-            all_actions.append(action)
-            state, value, done = draft.step(action)
-            if verbose:
-                print(f'\nTurn {turn}:\nAction: {action}, MCTS Value: {mcts_value}, NN Value: {nn_value}\n{state}')
-            if value == 0:  # Dire victory
-                print('Dire victory')
-                break
-            elif value == 1:
-                print('Radiant Victory')
-                break
-            turn += 1
-    except:
-        pass
+    while True:
+        if draft.draft_order[draft.next_pick_index] < 13:
+            action, mcts_value, p, nn_value = players[0].act(state, action, num_reads=100)
+        else:
+            action, mcts_value, p, nn_value = players[1].act(state, action, num_reads=100)
+        all_states.append(state)
+        all_actions.append(action)
+        state, value, done = draft.step(action)
+        if verbose:
+            print(f'\nTurn {turn}:\nAction: {action}, MCTS Value: {mcts_value}, NN Value: {nn_value}\n{state}')
+        if value == 0:  # Dire victory
+            print('Dire victory')
+            break
+        elif value == 1:
+            print('Radiant Victory')
+            break
+        turn += 1
+    all_actions.append(action)
+    all_states.append(state)
 
     # TODO: I'm really not confident this is right - it's worth double and triple checking
     all_values = [value] * 22
@@ -63,14 +63,10 @@ if __name__ == '__main__':
     port = 13337
     verbose = True
     hero_ids = pd.read_json('../const/draft_bert_hero_ids.json', orient='records')
-    print('creating env')
-    print('env created')
-    print('loading model')
-
-    print('model loaded')
 
     memory = deque(maxlen=memory_size)
 
+    start = time.time()
     for batch_of_games in range(n_games // n_jobs):
         # pool = ProcessPoolExecutor(2)
         pool = Pool(n_jobs)
@@ -78,5 +74,5 @@ if __name__ == '__main__':
         memory.extend(results)
 
     with open('../data/self_play/memory.pickle', 'wb') as f:
-        pickle.dumb(memory, f)
-
+        pickle.dump(memory, f)
+    print(f'Played {n_games} games using {n_jobs} jobs in {time.time() - start}s')

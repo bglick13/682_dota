@@ -1,6 +1,5 @@
 import os
 from abc import ABC
-import asyncio
 import time
 import datetime
 import numpy as np
@@ -8,8 +7,8 @@ from sklearn.preprocessing import LabelEncoder
 import pandas as pd
 try:
     from dotaservice.protos.DotaService_pb2 import *
-    from dotaservice.protos.DotaService_grpc import DotaServiceStub
     from dotaservice.protos.dota_shared_enums_pb2 import DOTA_GAMEMODE_ALL_DRAFT
+    dotaservice = True
 except ModuleNotFoundError:
     dotaservice = False
     print('dotaservice not found')
@@ -17,6 +16,10 @@ import uuid
 import pickle
 import docker
 import copy
+import logging
+
+logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
+logger = logging.getLogger(__name__)
 
 
 class CaptainModeDraft:
@@ -160,9 +163,9 @@ class DraftState(ABC):
             for hero in dire_dota_ids:
                 hero_picks.append(HeroPick(team_id=TEAM_DIRE, hero_id=hero, control_mode=HERO_CONTROL_MODE_DEFAULT))
         except ValueError as e:
-            print(e)
-            print(radiant_dota_ids)
-            print(dire_dota_ids)
+            logger.debug(e)
+            logger.debug(f'Radiant dota ids : {radiant_dota_ids}\Radiant model ids: {self.radiant}')
+            logger.debug(f'Dire dota ids : {dire_dota_ids}\Dire model ids: {self.dire}')
 
         # TODO generate game_id here so it's easily accessible
         return GameConfig(
@@ -178,20 +181,27 @@ class DraftState(ABC):
         # Reset and obtain the initial observation. This dictates who we are controlling,
         # this is done before the player definition, because there might be humand playing
         # that take up bot positions.
-        os.mkdir(f'../{game_id}')
+        local_volume = f'../rollout_results'
+        local_volume = os.path.dirname(os.path.abspath(local_volume))
+        local_volume = os.path.join(local_volume, 'rollout_results')
+        local_volume = os.path.join(local_volume, game_id)
+        os.mkdir(local_volume)
         config.game_id = game_id
-        with open(f'../{game_id}/config.pickle', 'wb') as f:
+        with open(f'{local_volume}/config.pickle', 'wb') as f:
             pickle.dump(config, f)
-        print('calling reset')
+        print('getting_client')
         client = docker.from_env()
+        print('got client')
+        assert os.path.isdir(local_volume), 'Incorrect mount point'
+        print(f'Mounting local volume: {local_volume}')
         container = client.containers.run('dotaservice',
-                              volumes={f'/Users/benjaminglickenhaus/PycharmProjects/682_project/{game_id}': {'bind':'/tmp',
-                                                                                                             'mode': 'rw'}},
-                              ports={f'{self.port}/tcp': self.port},
-                              detach=True)
+                                          volumes={local_volume: {'bind': '/tmp', 'mode': 'rw'}},
+                                          ports={f'{self.port}/tcp': self.port},
+                                          detach=True)
         print('launched container')
+        logger.debug('launched container')
         time.sleep(10)
-        print(container.logs())
+        logger.debug(container.logs())
 
     def get_winner(self):
         assert self.done, 'Draft is not complete'
@@ -201,25 +211,33 @@ class DraftState(ABC):
         print(f"Calling play for game id: {game_id}")
 
         self._play(config=config, game_id=game_id)
-        log_file_path = f'../{game_id}/{game_id}/bots/console.log'
+        print('returned from play')
+        local_volume = f'../rollout_results'
+        local_volume = os.path.dirname(os.path.abspath(local_volume))
+        local_volume = os.path.join(local_volume, 'rollout_results')
+        local_volume = os.path.join(local_volume, game_id)
+        log_file_path = f'{local_volume}/{game_id}/bots/console.log'
         time.sleep(10)
-        with open(log_file_path, 'r') as f:
-            print(f'Opened file: {log_file_path}')
-            while True:
-                where = f.tell()
-                line = f.readline()
-                if not line:
-                    time.sleep(1)
-                    f.seek(where)
-                else:
-                    if 'Building' in line:
-                        print(f'{line}')
-                    if 'npc_dota_badguys_fort destroyed' in line:
-                        print(f'Radiant Victory')
-                        return 1
-                    elif 'npc_dota_goodguys_fort destroyed' in line:
-                        print(f'Dire Victory')
-                        return 0
+        try:
+            with open(log_file_path, 'r') as f:
+                print(f'Opened file: {log_file_path}')
+                while True:
+                    where = f.tell()
+                    line = f.readline()
+                    if not line:
+                        time.sleep(1)
+                        f.seek(where)
+                    else:
+                        if 'Building' in line:
+                            print(f'{line}')
+                        if 'npc_dota_badguys_fort destroyed' in line:
+                            print(f'Radiant Victory')
+                            return 1
+                        elif 'npc_dota_goodguys_fort destroyed' in line:
+                            print(f'Dire Victory')
+                            return 0
+        except FileNotFoundError as e:
+            logger.error(e)
 
     def __str__(self):
         radiant = self.heros.loc[self.heros['model_id'].isin(self.radiant), 'localized_name']
