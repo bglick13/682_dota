@@ -43,8 +43,8 @@ class DraftAgent(DummyAgent):
     def __init__(self, model: DraftBert, pick_first):
         super().__init__()
         self.model: DraftBert = model
-        if torch.cuda.is_available():
-            self.model.cuda()
+        # if torch.cuda.is_available():
+        #     self.model.cuda()
         self.solver = None
         self.model.masked_output.requires_grad = False
         self.model.matching_output.requires_grad = False
@@ -107,10 +107,15 @@ class DraftAgent(DummyAgent):
             state = leaf
         s = state.state
         s_in = torch.LongTensor([s])
-        if torch.cuda.is_available():
-            s_in = s_in.cuda()
+        s_in.requires_grad = False
+        # if torch.cuda.is_available():
+        #     s_in = s_in.cuda()
 
-        encoded_s = self.model.forward(s_in)
+        try:
+            encoded_s = self.model.forward(s_in)
+        except Exception as e:
+            print(e)
+            print(s_in)
         if state.next_pick_index < 22:
             probs = self.model.get_next_hero_output(encoded_s[:, state.draft_order[state.next_pick_index], :])
             probs = probs[0]

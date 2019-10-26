@@ -1,0 +1,528 @@
+10/26 21:13:10 WARNING: CDirWatcher not implemented
+10/26 21:13:10 ERROR: HangWatchdogInternal_BeginScope() - Hang watchdog not implemented for this platform!
+10/26 21:13:10 ERROR: HangWatchdogInternal_EndScope() - Hang watchdog not implemented for this platform!
+10/26 21:13:10 [Filesystem] ---------------
+10/26 21:13:10 [Filesystem] Path ID:             File Path:
+10/26 21:13:10 [Filesystem] ADDONS               "/root/Steam/steamapps/common/dota 2 beta/game/dota_addons/" 
+10/26 21:13:10 [Filesystem] CONTENT              "/root/Steam/steamapps/common/dota 2 beta/content/dota/" 
+10/26 21:13:10 [Filesystem] CONTENT              "/root/Steam/steamapps/common/dota 2 beta/content/core/" 
+10/26 21:13:10 [Filesystem] CONTENTADDONS        "/root/Steam/steamapps/common/dota 2 beta/content/dota_addons/" 
+10/26 21:13:10 [Filesystem] CONTENTROOT          "/root/Steam/steamapps/common/dota 2 beta/content/" 
+10/26 21:13:10 [Filesystem] DEFAULT_WRITE_PATH   "/root/Steam/steamapps/common/dota 2 beta/game/dota/pak01.vpk" (vpk) /root/Steam/steamapps/common/dota 2 beta/game/dota/pak01.vpk
+10/26 21:13:10 [Filesystem] DEFAULT_WRITE_PATH   "/root/Steam/steamapps/common/dota 2 beta/game/dota/" 
+10/26 21:13:10 [Filesystem] EXECUTABLE_PATH      "/root/Steam/steamapps/common/dota 2 beta/game/bin/linuxsteamrt64/" 
+10/26 21:13:10 [Filesystem] GAME                 "/root/Steam/steamapps/common/dota 2 beta/game/dota/pak01.vpk" (vpk) /root/Steam/steamapps/common/dota 2 beta/game/dota/pak01.vpk
+10/26 21:13:10 [Filesystem] GAME                 "/root/Steam/steamapps/common/dota 2 beta/game/core/pak01.vpk" (vpk) /root/Steam/steamapps/common/dota 2 beta/game/core/pak01.vpk
+10/26 21:13:10 [Filesystem] GAME                 "/root/Steam/steamapps/common/dota 2 beta/game/dota/" 
+10/26 21:13:10 [Filesystem] GAME                 "/root/Steam/steamapps/common/dota 2 beta/game/core/" 
+10/26 21:13:10 [Filesystem] GAMEBIN              "/root/Steam/steamapps/common/dota 2 beta/game/dota/bin/linuxsteamrt64/" 
+10/26 21:13:10 [Filesystem] GAMEBIN              "/root/Steam/steamapps/common/dota 2 beta/game/dota/bin/" 
+10/26 21:13:10 [Filesystem] GAMEBIN              "/root/Steam/steamapps/common/dota 2 beta/game/core/bin/linuxsteamrt64/" 
+10/26 21:13:10 [Filesystem] GAMEBIN              "/root/Steam/steamapps/common/dota 2 beta/game/core/bin/" 
+10/26 21:13:10 [Filesystem] GAMEROOT             "/root/Steam/steamapps/common/dota 2 beta/game/" 
+10/26 21:13:10 [Filesystem] MOD                  "/root/Steam/steamapps/common/dota 2 beta/game/dota/pak01.vpk" (vpk) /root/Steam/steamapps/common/dota 2 beta/game/dota/pak01.vpk
+10/26 21:13:10 [Filesystem] MOD                  "/root/Steam/steamapps/common/dota 2 beta/game/dota/" 
+10/26 21:13:10 [Filesystem] PLATFORM             "/root/Steam/steamapps/common/dota 2 beta/game/core/pak01.vpk" (vpk) /root/Steam/steamapps/common/dota 2 beta/game/core/pak01.vpk
+10/26 21:13:10 [Filesystem] PLATFORM             "/root/Steam/steamapps/common/dota 2 beta/game/core/" 
+10/26 21:13:10 [Filesystem] SHADER_SOURCE        "/root/Steam/steamapps/common/dota 2 beta/src/shaders/dota/" 
+10/26 21:13:10 [Filesystem] SHADER_SOURCE        "/root/Steam/steamapps/common/dota 2 beta/src/shaders/core/" 
+10/26 21:13:10 [Filesystem] SHADER_SOURCE        "/root/Steam/steamapps/common/dota 2 beta/src/shaders/dota_addons/" 
+10/26 21:13:10 [Filesystem] SHADER_SOURCE        "/root/Steam/steamapps/common/dota 2 beta/src/shaders/dota_core/" 
+10/26 21:13:10 [Filesystem] SHADER_SOURCE_MOD    "/root/Steam/steamapps/common/dota 2 beta/src/shaders/dota/" 
+10/26 21:13:10 [Filesystem] SHADER_SOURCE_ROOT   "/root/Steam/steamapps/common/dota 2 beta/src/shaders/" 
+10/26 21:13:10 [CommandLine] command line arguments:
+10/26 21:13:10 [CommandLine] -botworldstatesocket_threaded -botworldstatetosocket_frames 15 -botworldstatetosocket_radiant 12120 -botworldstatetosocket_dire 12121 -con_logfile scripts/vscripts/bots/console.log -con_timestamp -console -dev -insecure -noip -nowatchdog +clientport 27006 +dota_1v1_skip_strategy 1 +dota_surrender_on_disconnect 0 +host_timescale 10 +hostname dotaservice +sv_cheats 1 +sv_hibernate_when_empty 0 +tv_delay 0 +tv_enable 1 +tv_title 694bb7a2-f835-11e9-b797-4cedfb6c1e84 +tv_autorecord 1 +tv_transmitall 1 -dedicated -fill_with_bots +map start gamemode 22 +sv_lan 1
+10/26 21:13:10 [Networking] Network System Initialized
+10/26 21:13:10 Physics Console Communications is not initialized
+10/26 21:13:10 [SplitScreen] Game supporting (4) split screen players
+10/26 21:13:11 [SceneFileCache] Loaded 61773 .vcds from 181 vcdlist files
+10/26 21:13:11 [Server] Event System loaded 95 events from file: vpk:/root/Steam/steamapps/common/dota 2 beta/game/core/pak01.vpk:resource/core.gameevents.
+10/26 21:13:11 [Server] Event System loaded 245 events from file: vpk:/root/Steam/steamapps/common/dota 2 beta/game/dota/pak01.vpk:resource/game.gameevents.
+10/26 21:13:11 [Server] Event System loaded 1 events from file: vpk:/root/Steam/steamapps/common/dota 2 beta/game/dota/pak01.vpk:./resource/port.gameevents.
+10/26 21:13:11 Unknown Ability Target Flag Value: DOTA_UNIT_TARGET_FLAG_DEAD!
+10/26 21:13:11  failed to dlopen libtensorflow.so error=libtensorflow.so: cannot open shared object file: No such file or directory
+10/26 21:13:11 [Networking] CEntitySystem::BuildEntityNetworking (parallel build of server) took 170.528 msecs for 913 out of 931 classes
+10/26 21:13:12 Failed to load mutations file! scripts/battlepass/ti2018/mutations.txt
+10/26 21:13:13 [ResourceSystem] Error loading resource file "soundevents/soundevents_test.vsndevts_c" (Error: ERROR_FILEOPEN)
+10/26 21:13:13 Steam Universe is invalid, possibly asking before Steam was successfully initialized.
+10/26 21:13:13 [HostStateManager] CHostStateMgr::QueueNewRequest( Idle (console), 1 )
+10/26 21:13:13 [EngineServiceManager] SwitchToLoop console requested:  id [1] addons []
+10/26 21:13:13 [HostStateManager] Idle (console)
+10/26 21:13:13 [HostStateManager] CHostStateMgr::QueueNewRequest( Loading (start), 2 )
+10/26 21:13:13 [EngineServiceManager] SwitchToLoop levelload requested:  id [2] addons []
+10/26 21:13:13 [Server] SV:  Level loading started for 'start'
+10/26 21:13:13 [Client] CL:  CLoopModeLevelLoad::MaybeSwitchToGameLoop switching to "game" loopmode with addons ()
+10/26 21:13:13 [EngineServiceManager] SwitchToLoop game requested:  id [2] addons []
+10/26 21:13:13 [Server] CNetworkGameServerBase::SetServerState (ss_dead -> ss_waitingforgamesessionmanifest)
+10/26 21:13:13 [Server] SV:  maxplayers set to 64
+10/26 21:13:13 [Networking] TCP/UDP Disabled.
+10/26 21:13:13 [SteamNetSockets] RelayNetWorkStatus:  avail=Attempting  config=Attempting  anyrelay=Not Attempted   (Attempt #1 to fetch config from https://api.steampowered.com/ISteamApps/GetSDRConfig/v1?appid=570&partner=valve)
+10/26 21:13:13 [SteamNetSockets] AuthStatus (gameserver interface):  Waiting  (Waiting for Steam login)
+10/26 21:13:13 [Networking] Network socket 'server' opened on port 27015
+10/26 21:13:13 Initializing script VM...
+10/26 21:13:13 ...done
+10/26 21:13:13 [Server] SV:  Executing dedicated server config file
+10/26 21:13:13 S:Gamerules: entering state 'DOTA_GAMERULES_STATE_INIT'
+10/26 21:13:13 [Server] SV:  CGameRulesGameSystem::GameInit installed game rules
+10/26 21:13:13 Radiant bot scripting using script path /root/Steam/steamapps/common/dota 2 beta/game/dota/scripts/vscripts/bots
+10/26 21:13:13 LoadScript: /root/Steam/steamapps/common/dota 2 beta/game/dota/scripts/vscripts/bots/hero_selection.lua, scope name HeroSelectionScriptScope
+10/26 21:13:13 [VScript] Decode sucessful:	table: 0x0023b6e8
+10/26 21:13:13 LoadScript: /root/Steam/steamapps/common/dota 2 beta/game/dota/scripts/vscripts/bots/team_desires.lua, scope name TeamDesiresScriptScope
+10/26 21:13:13 LoadScript: /root/Steam/steamapps/common/dota 2 beta/game/dota/scripts/vscripts/bots/team_desires.lua not found!
+10/26 21:13:13 About to load botcpp from /root/Steam/steamapps/common/dota 2 beta/game/dota/scripts/vscripts/bots/botcpp_radiant.so
+10/26 21:13:13 Could not open botcpp: /root/Steam/steamapps/common/dota 2 beta/game/dota/scripts/vscripts/bots/botcpp_radiant.so: cannot open shared object file: No such file or directory
+10/26 21:13:13 Dire bot scripting using script path /root/Steam/steamapps/common/dota 2 beta/game/dota/scripts/vscripts/bots
+10/26 21:13:13 LoadScript: /root/Steam/steamapps/common/dota 2 beta/game/dota/scripts/vscripts/bots/hero_selection.lua, scope name HeroSelectionScriptScope
+10/26 21:13:13 [VScript] Decode sucessful:	table: 0x0033b6e8
+10/26 21:13:13 LoadScript: /root/Steam/steamapps/common/dota 2 beta/game/dota/scripts/vscripts/bots/team_desires.lua, scope name TeamDesiresScriptScope
+10/26 21:13:13 LoadScript: /root/Steam/steamapps/common/dota 2 beta/game/dota/scripts/vscripts/bots/team_desires.lua not found!
+10/26 21:13:13 About to load botcpp from /root/Steam/steamapps/common/dota 2 beta/game/dota/scripts/vscripts/bots/botcpp_dire.so
+10/26 21:13:13 Could not open botcpp: /root/Steam/steamapps/common/dota 2 beta/game/dota/scripts/vscripts/bots/botcpp_dire.so: cannot open shared object file: No such file or directory
+10/26 21:13:14 [RESPONSE_RULES] CResponseSystem:  scripts/talker/response_rules.txt (21415 rules, 2308 criteria, and 21415 responses)
+10/26 21:13:14 [Server] SV:  Spawn Server: start
+10/26 21:13:14 [Server] CNetworkGameServerBase::SetServerState (ss_waitingforgamesessionmanifest -> ss_loading)
+10/26 21:13:14 [SteamNetSockets] Got SDR network config.  Loaded revision 241 OK
+10/26 21:13:14 [SteamNetSockets] RelayNetWorkStatus:  avail=Not Attempted  config=OK  anyrelay=Not Attempted   ()
+10/26 21:13:14 [Server] CNetworkGameServerBase::SetServerState (ss_dead -> ss_waitingforgamesessionmanifest)
+10/26 21:13:14 [Server] SV:  maxplayers set to 64
+10/26 21:13:14 [Networking] TCP/UDP Disabled.
+10/26 21:13:14 [Networking] Network socket 'hltv' opened on port 27020
+10/26 21:13:14 [HLTV Server] Starting SourceTV server listening on port 27020.
+10/26 21:13:14 [Server] CNetworkGameServerBase::SetServerState (ss_loading -> ss_active)
+10/26 21:13:14 [Server] SV:  IGameSystem::LoopActivateAllSystems
+10/26 21:13:14 [Host] HO:  IGameSystem::LoopActivateAllSystems
+10/26 21:13:14 Height map file (maps/start.vhcg) not found, this will make ground height traces more expensive! Recompile the map to generate a height map.
+10/26 21:13:14 [Server] SV:  64 player server started
+10/26 21:13:14 [Server] SV:  WriteInitialSpawnGroups sending 1 groups
+10/26 21:13:14 [HLTV Server] Recording SourceTV replay to replays/auto-20191026-2113-start-dotaservice.dem...
+10/26 21:13:14 [HLTV Server] playdemo replays/auto-20191026-2113-start-dotaservice.dem
+10/26 21:13:14 [HostStateManager] Loading (start)
+10/26 21:13:14 S:Gamerules: entering state 'DOTA_GAMERULES_STATE_CUSTOM_GAME_SETUP'
+10/26 21:13:14 S:Gamerules: entering state 'DOTA_GAMERULES_STATE_HERO_SELECTION'
+10/26 21:13:14 SV: Started streaming map dota spawngroup 2
+10/26 21:13:14 [Server] CDOTA_PlayerResource: Adding player SteamID 90071996842377217 to slot 0 FakeClient=1 preferred slot = -1
+10/26 21:13:14 [Server] PR:SetPlayerName 0:[I:0:0] "694bb7a2_R0 (Bot)"
+10/26 21:13:14 [Server] CDOTA_PlayerResource: Adding player SteamID 90071996842377218 to slot 1 FakeClient=1 preferred slot = -1
+10/26 21:13:14 [Server] PR:SetPlayerName 1:[I:0:0] "694bb7a2_R1 (Bot)"
+10/26 21:13:14 [Server] CDOTA_PlayerResource: Adding player SteamID 90071996842377219 to slot 2 FakeClient=1 preferred slot = -1
+10/26 21:13:14 [Server] PR:SetPlayerName 2:[I:0:0] "694bb7a2_R2 (Bot)"
+10/26 21:13:14 [Server] CDOTA_PlayerResource: Adding player SteamID 90071996842377220 to slot 3 FakeClient=1 preferred slot = -1
+10/26 21:13:14 [Server] PR:SetPlayerName 3:[I:0:0] "694bb7a2_R3 (Bot)"
+10/26 21:13:14 [Server] CDOTA_PlayerResource: Adding player SteamID 90071996842377221 to slot 4 FakeClient=1 preferred slot = -1
+10/26 21:13:14 [Server] PR:SetPlayerName 4:[I:0:0] "694bb7a2_R4 (Bot)"
+10/26 21:13:14 [Server] CDOTA_PlayerResource: Adding player SteamID 90071996842377222 to slot 5 FakeClient=1 preferred slot = -1
+10/26 21:13:14 [Server] PR:SetPlayerName 5:[I:0:0] "694bb7a2_D0 (Bot)"
+10/26 21:13:14 [Server] CDOTA_PlayerResource: Adding player SteamID 90071996842377223 to slot 6 FakeClient=1 preferred slot = -1
+10/26 21:13:14 [Server] PR:SetPlayerName 6:[I:0:0] "694bb7a2_D1 (Bot)"
+10/26 21:13:14 [Server] CDOTA_PlayerResource: Adding player SteamID 90071996842377224 to slot 7 FakeClient=1 preferred slot = -1
+10/26 21:13:14 [Server] PR:SetPlayerName 7:[I:0:0] "694bb7a2_D2 (Bot)"
+10/26 21:13:14 [Server] CDOTA_PlayerResource: Adding player SteamID 90071996842377225 to slot 8 FakeClient=1 preferred slot = -1
+10/26 21:13:14 [Server] PR:SetPlayerName 8:[I:0:0] "694bb7a2_D3 (Bot)"
+10/26 21:13:14 [Server] CDOTA_PlayerResource: Adding player SteamID 90071996842377226 to slot 9 FakeClient=1 preferred slot = -1
+10/26 21:13:14 [Server] PR:SetPlayerName 9:[I:0:0] "694bb7a2_D4 (Bot)"
+10/26 21:13:14 [HLTV Server] SourceTV broadcast active.
+10/26 21:13:14 [Server] Unable to load grid nav: file not found for world prefabs/promotional_radiant_fountain
+10/26 21:13:14 [Server] Unable to load grid nav: file not found for world prefabs/promotional_dire_fountain
+10/26 21:13:14 [Server] SV:  ServerSteamID=[A:1:2025358341:13517] (90130049645708293).
+10/26 21:13:14 [GCClient] Logged on to Steam, set GC connection state to NO_SESSION
+10/26 21:13:14 [GCClient] Send msg 4007 (k_EMsgGCServerHello), 24 bytes
+10/26 21:13:14 [Server] SV:  CDOTAGCServerSystem - couldn't add listener because Steam wasn't ready
+10/26 21:13:14 [SteamNetSockets] Gameserver logged on to Steam, assigned identity steamid:90130049645708293
+10/26 21:13:14 [SteamNetSockets] AuthStatus (steamid:90130049645708293):  Attempting  (Requesting cert)
+10/26 21:13:14 [GCClient] OnSteamServersConnected()
+10/26 21:13:14 [Server] SV:  VAC secure mode disabled.
+10/26 21:13:14 [SteamNetSockets] AuthStatus (steamid:90130049645708293):  OK  (OK)
+10/26 21:13:15 [GCClient] Recv msg 4005 (k_EMsgGCServerWelcome), 11 bytes
+10/26 21:13:15 [GCClient] Received server welcome from GC.
+10/26 21:13:15 [SOCache] CMsgClientWelcome subscribed: 0 up-to-date, 0 out-of-date
+10/26 21:13:15 GC Connection established for server version 3821
+10/26 21:13:15 [GCClient] Send msg 4508 (k_EMsgGCGameServerInfo), 87 bytes
+10/26 21:13:15 --- Sent CMsgGameServerInfo to GC
+10/26 21:13:15 server_public_ip_addr: 1203773412
+server_private_ip_addr: 0
+server_port: 27015
+server_tv_port: 27020
+server_key: ""
+server_hibernation: false
+server_type: GAME
+server_region: 0
+server_loadavg: 1.83
+server_tv_broadcast_time: 10.2333336
+server_game_time: -16.9333115
+relay_slots_max: 64
+relays_connected: 0
+relay_clients_connected: 0
+tv_secret_code: 11277955741894229303
+server_version: 3821
+server_cluster: 0
+assigned_server_tv_port: 27020
+allow_custom_games: BOTH
+build_version: 3821
+tf_server_count: 1
+
+10/26 21:13:15 ---
+10/26 21:13:15 Server:  Running [unknown]
+10/26 21:13:15 Client:  Disconnected
+10/26 21:13:15 [EngineServiceManager] ----- Status -----
+10/26 21:13:15 [EngineServiceManager] @ Current  :  game
+10/26 21:13:15 [Server] source   : console
+10/26 21:13:15 [Server] hostname : dotaservice
+10/26 21:13:15 [Server] spawn    : 1
+10/26 21:13:15 [Server] version  : 47/47 8372 insecure  public
+10/26 21:13:15 [Server] steamid  : [I:1:0] (72057594037927936)
+10/26 21:13:15 [Server] udp/ip   : unknown:27015 (public 71.192.31.228:27015)
+10/26 21:13:15 [Server] os/type  : Linux dedicated
+10/26 21:13:15 [Server] sourcetv : unknown:27020 (public 71.192.31.228:27015) delay 0.0s
+10/26 21:13:15 [Server] players  : 0 humans, 11 bots (0 max) (not hibernating) (unreserved)
+10/26 21:13:15 [Server] ---------spawngroups----
+10/26 21:13:15 [Server] loaded spawngroup(  1)  : SV:  [1: start | main lump | mapload]
+10/26 21:13:15 [Server] loading spawngroup(  2)  : SV:  [2: dota | main lump | mapload]
+10/26 21:13:15 [Server] loading spawngroup(  3)  : SV:  [3: prefabs/promotional_radiant_fountain | main lump | mapload | point_prefab]
+10/26 21:13:15 [Server] loading spawngroup(  4)  : SV:  [4: prefabs/promotional_dire_fountain | main lump | mapload | point_prefab]
+10/26 21:13:15 [Server] ---------players--------
+10/26 21:13:15 [Server]   id     time ping loss      state   rate adr name
+10/26 21:13:15 [Server]    1      BOT    0    0     active      0 'SourceTV'
+10/26 21:13:15 [Server]    2      BOT    0    0     active      0 '694bb7a2_R0 (Bot)'
+10/26 21:13:15 [Server]    3      BOT    0    0     active      0 '694bb7a2_R1 (Bot)'
+10/26 21:13:15 [Server]    4      BOT    0    0     active      0 '694bb7a2_R2 (Bot)'
+10/26 21:13:15 [Server]    5      BOT    0    0     active      0 '694bb7a2_R3 (Bot)'
+10/26 21:13:15 [Server]    6      BOT    0    0     active      0 '694bb7a2_R4 (Bot)'
+10/26 21:13:15 [Server]    7      BOT    0    0     active      0 '694bb7a2_D0 (Bot)'
+10/26 21:13:15 [Server]    8      BOT    0    0     active      0 '694bb7a2_D1 (Bot)'
+10/26 21:13:15 [Server]    9      BOT    0    0     active      0 '694bb7a2_D2 (Bot)'
+10/26 21:13:15 [Server]   10      BOT    0    0     active      0 '694bb7a2_D3 (Bot)'
+10/26 21:13:15 [Server]   11      BOT    0    0     active      0 '694bb7a2_D4 (Bot)'
+10/26 21:13:15 [Server] GameState: DOTA_GAMERULES_STATE_HERO_SELECTION Times: Transition=61.03 Current=10.37
+10/26 21:13:15 [Server] #end
+10/26 21:13:16 [Server] PR:SetSelectedHero 0:[I:0:0] npc_dota_hero_luna(48)
+10/26 21:13:16 [Server] PR:SetSelectedHero 1:[I:0:0] npc_dota_hero_dragon_knight(49)
+10/26 21:13:16 [Server] PR:SetSelectedHero 2:[I:0:0] npc_dota_hero_doom_bringer(69)
+10/26 21:13:16 [Server] PR:SetSelectedHero 3:[I:0:0] npc_dota_hero_techies(105)
+10/26 21:13:16 [Server] PR:SetSelectedHero 4:[I:0:0] npc_dota_hero_zuus(22)
+10/26 21:13:16 [Server] PR:SetSelectedHero 5:[I:0:0] npc_dota_hero_mirana(9)
+10/26 21:13:16 [Server] PR:SetSelectedHero 6:[I:0:0] npc_dota_hero_lion(26)
+10/26 21:13:16 [Server] PR:SetSelectedHero 7:[I:0:0] npc_dota_hero_puck(13)
+10/26 21:13:16 [Server] PR:SetSelectedHero 8:[I:0:0] npc_dota_hero_phantom_assassin(44)
+10/26 21:13:16 [Server] PR:SetSelectedHero 9:[I:0:0] npc_dota_hero_centaur(96)
+10/26 21:13:16 S:Gamerules: entering state 'DOTA_GAMERULES_STATE_WAIT_FOR_MAP_TO_LOAD'
+10/26 21:13:17 S:Gamerules: entering state 'DOTA_GAMERULES_STATE_PRE_GAME'
+10/26 21:13:17 m_flPreGameStartTime set to 27.23
+10/26 21:13:17 m_flStateTransitionTime set to 117.23
+10/26 21:13:17 Height map file (maps/prefabs/promotional_radiant_fountain.vhcg) not found, this will make ground height traces more expensive! Recompile the map to generate a height map.
+10/26 21:13:17 Height map file (maps/prefabs/promotional_dire_fountain.vhcg) not found, this will make ground height traces more expensive! Recompile the map to generate a height map.
+10/26 21:13:17 [VScript] PLYRS	[{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_luna","id":0},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_dragon_knight","id":1},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_doom_bringer","id":2},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_techies","id":3},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_zuus","id":4},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_mirana","id":5},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_lion","id":6},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_puck","id":7},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_phantom_assassin","id":8},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_centaur","id":9}]
+10/26 21:13:17 [VScript] PLYRS	[{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_luna","id":0},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_dragon_knight","id":1},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_doom_bringer","id":2},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_techies","id":3},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_zuus","id":4},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_mirana","id":5},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_lion","id":6},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_puck","id":7},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_phantom_assassin","id":8},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_centaur","id":9}]
+10/26 21:13:17 [VScript] PLYRS	[{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_luna","id":0},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_dragon_knight","id":1},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_doom_bringer","id":2},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_techies","id":3},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_zuus","id":4},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_mirana","id":5},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_lion","id":6},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_puck","id":7},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_phantom_assassin","id":8},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_centaur","id":9}]
+10/26 21:13:17 [VScript] PLYRS	[{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_luna","id":0},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_dragon_knight","id":1},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_doom_bringer","id":2},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_techies","id":3},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_zuus","id":4},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_mirana","id":5},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_lion","id":6},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_puck","id":7},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_phantom_assassin","id":8},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_centaur","id":9}]
+10/26 21:13:17 [VScript] PLYRS	[{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_luna","id":0},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_dragon_knight","id":1},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_doom_bringer","id":2},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_techies","id":3},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_zuus","id":4},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_mirana","id":5},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_lion","id":6},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_puck","id":7},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_phantom_assassin","id":8},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_centaur","id":9}]
+10/26 21:13:17 [VScript] PLYRS	[{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_luna","id":0},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_dragon_knight","id":1},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_doom_bringer","id":2},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_techies","id":3},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_zuus","id":4},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_mirana","id":5},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_lion","id":6},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_puck","id":7},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_phantom_assassin","id":8},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_centaur","id":9}]
+10/26 21:13:18 [VScript] PLYRS	[{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_luna","id":0},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_dragon_knight","id":1},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_doom_bringer","id":2},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_techies","id":3},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_zuus","id":4},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_mirana","id":5},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_lion","id":6},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_puck","id":7},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_phantom_assassin","id":8},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_centaur","id":9}]
+10/26 21:13:18 [VScript] PLYRS	[{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_luna","id":0},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_dragon_knight","id":1},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_doom_bringer","id":2},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_techies","id":3},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_zuus","id":4},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_mirana","id":5},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_lion","id":6},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_puck","id":7},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_phantom_assassin","id":8},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_centaur","id":9}]
+10/26 21:13:18 [VScript] PLYRS	[{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_luna","id":0},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_dragon_knight","id":1},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_doom_bringer","id":2},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_techies","id":3},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_zuus","id":4},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_mirana","id":5},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_lion","id":6},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_puck","id":7},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_phantom_assassin","id":8},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_centaur","id":9}]
+10/26 21:13:18 [VScript] PLYRS	[{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_luna","id":0},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_dragon_knight","id":1},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_doom_bringer","id":2},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_techies","id":3},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_zuus","id":4},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_mirana","id":5},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_lion","id":6},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_puck","id":7},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_phantom_assassin","id":8},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_centaur","id":9}]
+10/26 21:13:26 S:Gamerules: entering state 'DOTA_GAMERULES_STATE_GAME_IN_PROGRESS'
+10/26 21:13:26 m_flGameStartTime set to 117.27
+10/26 21:13:26 [GCClient] Send msg 4508 (k_EMsgGCGameServerInfo), 87 bytes
+10/26 21:13:26 --- Sent CMsgGameServerInfo to GC
+10/26 21:13:26 server_public_ip_addr: 1203773412
+server_private_ip_addr: 0
+server_port: 27015
+server_tv_port: 27020
+server_key: ""
+server_hibernation: false
+server_type: GAME
+server_region: 0
+server_loadavg: 1.79
+server_tv_broadcast_time: 117.466675
+server_game_time: 0.0999984741
+relay_slots_max: 64
+relays_connected: 0
+relay_clients_connected: 0
+tv_secret_code: 11277955741894229303
+server_version: 3821
+server_cluster: 0
+assigned_server_tv_port: 27020
+allow_custom_games: BOTH
+build_version: 3821
+tf_server_count: 1
+
+10/26 21:13:26 ---
+10/26 21:14:24 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:14:24 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:14:28 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:14:33 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:14:40 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:14:40 [VScript] PLYRS	[{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_luna","id":0},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_dragon_knight","id":1},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_doom_bringer","id":2},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_techies","id":3},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_zuus","id":4},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_mirana","id":5},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_lion","id":6},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_puck","id":7},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_phantom_assassin","id":8},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_centaur","id":9}]
+10/26 21:14:40 [VScript] PLYRS	[{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_luna","id":0},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_dragon_knight","id":1},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_doom_bringer","id":2},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_techies","id":3},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_zuus","id":4},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_mirana","id":5},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_lion","id":6},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_puck","id":7},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_phantom_assassin","id":8},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_centaur","id":9}]
+10/26 21:14:40 [Entity System] SERVER: npc_dota_hero_lion(CDOTA_Unit_Hero_Lion) 'npc_dota_hero_lion' [910] thinking for 19.67 ms!!!
+10/26 21:14:51 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:14:51 [Server] Game code (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:14:52 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:14:52 Building: npc_dota_goodguys_tower1_mid destroyed at 697.424133.
+10/26 21:14:53 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:14:53 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:14:54 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:15:01 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:15:01 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:15:02 Building: npc_dota_badguys_tower1_mid destroyed at 775.105164.
+10/26 21:15:06 [Server] Client (account 0) tried to execute invalid order (26). Target can't be seen by the unit's team.
+10/26 21:15:11 [Server] Game code (account 0) tried to execute invalid order (15). Ability is still in cooldown.
+10/26 21:15:11 [VScript] PLYRS	[{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_luna","id":0},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_dragon_knight","id":1},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_doom_bringer","id":2},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_techies","id":3},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_zuus","id":4},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_mirana","id":5},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_lion","id":6},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_puck","id":7},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_phantom_assassin","id":8},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_centaur","id":9}]
+10/26 21:15:11 [VScript] PLYRS	[{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_luna","id":0},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_dragon_knight","id":1},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_doom_bringer","id":2},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_techies","id":3},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_zuus","id":4},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_mirana","id":5},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_lion","id":6},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_puck","id":7},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_phantom_assassin","id":8},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_centaur","id":9}]
+10/26 21:15:12 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:15:13 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:15:27 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:15:28 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:15:34 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:15:34 [Server] Game code (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:15:35 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:15:39 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:15:39 Building: npc_dota_badguys_tower1_bot destroyed at 1051.937500.
+10/26 21:15:40 [Server] Client (account 0) tried to execute invalid order (26). Target can't be seen by the unit's team.
+10/26 21:15:44 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:15:44 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:15:48 Building: npc_dota_badguys_tower2_mid destroyed at 1115.655273.
+10/26 21:15:49 [Server] Game code (account 0) tried to execute invalid order (15). Ability is still in cooldown.
+10/26 21:15:51 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:15:51 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:15:53 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:15:54 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:16:04 Building: npc_dota_badguys_tower1_top destroyed at 1224.961914.
+10/26 21:16:08 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:16:08 [VScript] PLYRS	[{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_luna","id":0},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_dragon_knight","id":1},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_doom_bringer","id":2},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_techies","id":3},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_zuus","id":4},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_mirana","id":5},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_lion","id":6},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_puck","id":7},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_phantom_assassin","id":8},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_centaur","id":9}]
+10/26 21:16:08 [VScript] PLYRS	[{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_luna","id":0},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_dragon_knight","id":1},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_doom_bringer","id":2},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_techies","id":3},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_zuus","id":4},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_mirana","id":5},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_lion","id":6},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_puck","id":7},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_phantom_assassin","id":8},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_centaur","id":9}]
+10/26 21:16:08 [Entity System] SERVER: npc_dota_hero_phantom_assassin(CDOTA_Unit_Hero_PhantomAssassin) 'npc_dota_hero_phantom_assassin' [953] thinking for 23.51 ms!!!
+10/26 21:16:15 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:16:23 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:16:24 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:16:25 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:16:26 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:16:27 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:16:27 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:16:34 Building: npc_dota_badguys_tower2_bot destroyed at 1434.210815.
+10/26 21:16:34 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:16:34 [Server] Game code (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:16:35 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:16:38 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:16:39 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:16:39 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:16:39 [Server] Game code (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:16:42 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:16:46 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:16:47 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:16:49 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:16:56 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:16:57 Building: npc_dota_goodguys_tower1_bot destroyed at 1606.602051.
+10/26 21:17:01 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:17:01 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:17:01 [Server] Game code (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:17:02 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:17:10 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:17:10 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:17:10 [Server] Game code (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:17:16 [Server] Client (account 0) tried to execute invalid order (26). Target can't be seen by the unit's team.
+10/26 21:17:16 [Server] Client (account 0) tried to execute invalid order (26). Target can't be seen by the unit's team.
+10/26 21:17:16 [VScript] PLYRS	[{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_luna","id":0},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_dragon_knight","id":1},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_doom_bringer","id":2},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_techies","id":3},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_zuus","id":4},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_mirana","id":5},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_lion","id":6},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_puck","id":7},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_phantom_assassin","id":8},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_centaur","id":9}]
+10/26 21:17:16 [VScript] PLYRS	[{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_luna","id":0},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_dragon_knight","id":1},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_doom_bringer","id":2},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_techies","id":3},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_zuus","id":4},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_mirana","id":5},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_lion","id":6},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_puck","id":7},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_phantom_assassin","id":8},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_centaur","id":9}]
+10/26 21:17:16 [Entity System] SERVER: npc_dota_hero_luna(CDOTA_Unit_Hero_Luna) 'npc_dota_hero_luna' [769] thinking for 23.59 ms!!!
+10/26 21:17:18 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:17:18 [Server] Game code (account 0) tried to execute invalid order (19). Target NPC is dead.
+10/26 21:17:20 Building: npc_dota_badguys_tower3_bot destroyed at 1772.994751.
+10/26 21:17:21 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:17:21 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:17:23 [VScript] PLYRS	[{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_luna","id":0},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_dragon_knight","id":1},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_doom_bringer","id":2},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_techies","id":3},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_zuus","id":4},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_mirana","id":5},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_lion","id":6},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_puck","id":7},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_phantom_assassin","id":8},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_centaur","id":9}]
+10/26 21:17:23 [VScript] PLYRS	[{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_luna","id":0},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_dragon_knight","id":1},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_doom_bringer","id":2},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_techies","id":3},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_zuus","id":4},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_mirana","id":5},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_lion","id":6},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_puck","id":7},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_phantom_assassin","id":8},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_centaur","id":9}]
+10/26 21:17:23 [Entity System] SERVER: npc_dota_hero_luna(CDOTA_Unit_Hero_Luna) 'npc_dota_hero_luna' [769] thinking for 22.33 ms!!!
+10/26 21:17:25 Building: npc_dota_badguys_range_rax_bot destroyed at 1808.319458.
+10/26 21:17:25 Building: npc_dota_badguys_melee_rax_bot destroyed at 1809.252563.
+10/26 21:17:26 Building: npc_dota_badguys_fillers destroyed at 1816.184204.
+10/26 21:17:26 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:17:26 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:17:30 Building: npc_dota_badguys_tower3_mid destroyed at 1844.177368.
+10/26 21:17:31 [VScript] PLYRS	[{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_luna","id":0},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_dragon_knight","id":1},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_doom_bringer","id":2},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_techies","id":3},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_zuus","id":4},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_mirana","id":5},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_lion","id":6},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_puck","id":7},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_phantom_assassin","id":8},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_centaur","id":9}]
+10/26 21:17:31 [VScript] PLYRS	[{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_luna","id":0},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_dragon_knight","id":1},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_doom_bringer","id":2},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_techies","id":3},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_zuus","id":4},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_mirana","id":5},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_lion","id":6},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_puck","id":7},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_phantom_assassin","id":8},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_centaur","id":9}]
+10/26 21:17:31 [Entity System] SERVER: npc_dota_hero_luna(CDOTA_Unit_Hero_Luna) 'npc_dota_hero_luna' [769] thinking for 23.41 ms!!!
+10/26 21:17:32 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:17:32 [Server] Game code (account 0) tried to execute invalid order (19). Target NPC is dead.
+10/26 21:17:32 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:17:32 Building: npc_dota_badguys_melee_rax_mid destroyed at 1862.972778.
+10/26 21:17:33 Building: npc_dota_badguys_range_rax_mid destroyed at 1865.605469.
+10/26 21:17:34 Building: npc_dota_badguys_fillers destroyed at 1874.769897.
+10/26 21:17:36 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:17:36 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:17:40 Building: npc_dota_badguys_fillers destroyed at 1915.893188.
+10/26 21:17:43 Building: npc_dota_badguys_tower2_top destroyed at 1939.118042.
+10/26 21:17:46 Building: npc_dota_badguys_tower3_top destroyed at 1961.126343.
+10/26 21:17:46 Building: npc_dota_badguys_fillers destroyed at 1963.802124.
+10/26 21:17:47 Building: npc_dota_badguys_range_rax_top destroyed at 1971.695679.
+10/26 21:17:47 Building: npc_dota_badguys_melee_rax_top destroyed at 1972.832886.
+10/26 21:17:48 [VScript] PLYRS	[{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_luna","id":0},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_dragon_knight","id":1},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_doom_bringer","id":2},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_techies","id":3},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_zuus","id":4},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_mirana","id":5},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_lion","id":6},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_puck","id":7},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_phantom_assassin","id":8},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_centaur","id":9}]
+10/26 21:17:48 [VScript] PLYRS	[{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_luna","id":0},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_dragon_knight","id":1},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_doom_bringer","id":2},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_techies","id":3},{"is_bot":true,"team_id":2,"hero":"npc_dota_hero_zuus","id":4},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_mirana","id":5},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_lion","id":6},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_puck","id":7},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_phantom_assassin","id":8},{"is_bot":true,"team_id":3,"hero":"npc_dota_hero_centaur","id":9}]
+10/26 21:17:48 [Entity System] SERVER: npc_dota_hero_luna(CDOTA_Unit_Hero_Luna) 'npc_dota_hero_luna' [769] thinking for 23.42 ms!!!
+10/26 21:17:48 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:17:49 Building: npc_dota_badguys_fillers destroyed at 1980.258179.
+10/26 21:17:49 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:17:50 Building: npc_dota_badguys_tower4 destroyed at 1992.934692.
+10/26 21:17:51 Building: npc_dota_badguys_tower4 destroyed at 1998.654175.
+10/26 21:17:53 Building: npc_dota_badguys_fort destroyed at 2011.665161.
+10/26 21:17:53 S:Gamerules: entering state 'DOTA_GAMERULES_STATE_POST_GAME'
+10/26 21:17:53 CDOTAUserMsg_PlayerMMR check: lobbyType=-1, GameEndReason=0
+10/26 21:17:53 CDOTAGCServerSystem::MatchSignOut gathering sign out stats. Duration in minutes = 33.528309
+10/26 21:17:53    Player 0 Account 0 TotalGold = 13900.000000 TotalXP = 14043.000000 nGoldPerMinute = 414 nXPPerMinute = 418
+10/26 21:17:53    Player 0 Account 0 TotalGold = 14519.000000 TotalXP = 17786.000000 nGoldPerMinute = 433 nXPPerMinute = 530
+10/26 21:17:53    Player 0 Account 0 TotalGold = 7129.000000 TotalXP = 8331.000000 nGoldPerMinute = 212 nXPPerMinute = 248
+10/26 21:17:53    Player 0 Account 0 TotalGold = 8682.000000 TotalXP = 9964.000000 nGoldPerMinute = 258 nXPPerMinute = 297
+10/26 21:17:53    Player 0 Account 0 TotalGold = 13132.000000 TotalXP = 18534.000000 nGoldPerMinute = 391 nXPPerMinute = 552
+10/26 21:17:53    Player 0 Account 0 TotalGold = 6532.000000 TotalXP = 8045.000000 nGoldPerMinute = 194 nXPPerMinute = 239
+10/26 21:17:53    Player 0 Account 0 TotalGold = 9949.000000 TotalXP = 12476.000000 nGoldPerMinute = 296 nXPPerMinute = 372
+10/26 21:17:53    Player 0 Account 0 TotalGold = 5822.000000 TotalXP = 7219.000000 nGoldPerMinute = 173 nXPPerMinute = 215
+10/26 21:17:53    Player 0 Account 0 TotalGold = 10220.000000 TotalXP = 11595.000000 nGoldPerMinute = 304 nXPPerMinute = 345
+10/26 21:17:53    Player 0 Account 0 TotalGold = 6266.000000 TotalXP = 8085.000000 nGoldPerMinute = 186 nXPPerMinute = 241
+10/26 21:17:53 Match signout:  duration = 2011 (2011.698608) good guys win = 1
+10/26 21:17:53   Match start date: Sat Oct 26 21:13:16 2019
+10/26 21:17:53   Num players on teams:  Good: 5  Bad: 5
+10/26 21:17:53 Team 0 Player 0 m_unAccountID = 0  Items: 75, 147, 88, 36, 29, 18, 0, 2, 0
+10/26 21:17:53   LastHit = 110  Deny = 13  ClaimedMiss = 16  ClaimedDeny = 0  Miss = 24
+10/26 21:17:53   Level: 17 Gold: 1957  KDA: 8 / 5 / 13
+10/26 21:17:53   Actual Player Damage: 17441 Actual Building Damage: 8241 Actual Healing: 0
+10/26 21:17:53   Scaled Player Damage: 14663 Scaled Building Damage: 4434 Scaled Healing: 0
+10/26 21:17:53   XP per min: 414  Gold per min: 418  Claimed Farm: 5394  Support Gold 0
+10/26 21:17:53 Team 0 Player 1 m_unAccountID = 0  Items: 63, 56, 151, 94, 116, 2, 0, 16, 182
+10/26 21:17:53   LastHit = 80  Deny = 16  ClaimedMiss = 40  ClaimedDeny = 3  Miss = 34
+10/26 21:17:53   Level: 20 Gold: 3760  KDA: 13 / 1 / 17
+10/26 21:17:53   Actual Player Damage: 30505 Actual Building Damage: 5732 Actual Healing: 0
+10/26 21:17:53   Scaled Player Damage: 25133 Scaled Building Damage: 2903 Scaled Healing: 0
+10/26 21:17:53   XP per min: 433  Gold per min: 530  Claimed Farm: 5563  Support Gold 1130
+10/26 21:17:53 Team 0 Player 2 m_unAccountID = 0  Items: 0, 0, 0, 0, 0, 0, 0, 0, 0
+10/26 21:17:53   LastHit = 11  Deny = 9  ClaimedMiss = 9  ClaimedDeny = 0  Miss = 28
+10/26 21:17:53   Level: 13 Gold: 5855  KDA: 0 / 8 / 6
+10/26 21:17:53   Actual Player Damage: 1136 Actual Building Damage: 1213 Actual Healing: 0
+10/26 21:17:53   Scaled Player Damage: 1142 Scaled Building Damage: 652 Scaled Healing: 0
+10/26 21:17:53   XP per min: 212  Gold per min: 248  Claimed Farm: 1781  Support Gold 0
+10/26 21:17:53 Team 0 Player 3 m_unAccountID = 0  Items: 42, 40, 0, 0, 0, 0, 0, 0, 0
+10/26 21:17:53   LastHit = 15  Deny = 3  ClaimedMiss = 7  ClaimedDeny = 0  Miss = 53
+10/26 21:17:53   Level: 14 Gold: 7030  KDA: 4 / 4 / 10
+10/26 21:17:53   Actual Player Damage: 3602 Actual Building Damage: 1168 Actual Healing: 0
+10/26 21:17:53   Scaled Player Damage: 3704 Scaled Building Damage: 552 Scaled Healing: 0
+10/26 21:17:53   XP per min: 258  Gold per min: 297  Claimed Farm: 2446  Support Gold 1030
+10/26 21:17:53 Team 0 Player 4 m_unAccountID = 0  Items: 40, 1, 121, 180, 0, 0, 0, 0, 0
+10/26 21:17:53   LastHit = 80  Deny = 15  ClaimedMiss = 36  ClaimedDeny = 0  Miss = 34
+10/26 21:17:53   Level: 20 Gold: 4260  KDA: 11 / 3 / 20
+10/26 21:17:53   Actual Player Damage: 31618 Actual Building Damage: 2711 Actual Healing: 0
+10/26 21:17:53   Scaled Player Damage: 25301 Scaled Building Damage: 1459 Scaled Healing: 0
+10/26 21:17:53   XP per min: 391  Gold per min: 552  Claimed Farm: 5942  Support Gold 180
+10/26 21:17:53 Team 1 Player 0 m_unAccountID = 0  Items: 22, 18, 36, 22, 29, 41, 2, 19, 0
+10/26 21:17:53   LastHit = 25  Deny = 3  ClaimedMiss = 10  ClaimedDeny = 0  Miss = 41
+10/26 21:17:53   Level: 13 Gold: 648  KDA: 2 / 9 / 7
+10/26 21:17:53   Actual Player Damage: 6632 Actual Building Damage: 312 Actual Healing: 0
+10/26 21:17:53   Scaled Player Damage: 5487 Scaled Building Damage: 176 Scaled Healing: 0
+10/26 21:17:53   XP per min: 194  Gold per min: 239  Claimed Farm: 2467  Support Gold 50
+10/26 21:17:53 Team 1 Player 1 m_unAccountID = 0  Items: 42, 1, 36, 180, 79, 0, 0, 0, 0
+10/26 21:17:53   LastHit = 43  Deny = 6  ClaimedMiss = 26  ClaimedDeny = 0  Miss = 35
+10/26 21:17:53   Level: 16 Gold: 1959  KDA: 10 / 7 / 10
+10/26 21:17:53   Actual Player Damage: 19275 Actual Building Damage: 278 Actual Healing: 4876
+10/26 21:17:53   Scaled Player Damage: 13507 Scaled Building Damage: 165 Scaled Healing: 3589
+10/26 21:17:53   XP per min: 296  Gold per min: 372  Claimed Farm: 4023  Support Gold 850
+10/26 21:17:53 Team 1 Player 2 m_unAccountID = 0  Items: 0, 0, 0, 0, 0, 0, 0, 0, 0
+10/26 21:17:53   LastHit = 10  Deny = 13  ClaimedMiss = 8  ClaimedDeny = 0  Miss = 49
+10/26 21:17:53   Level: 12 Gold: 4760  KDA: 1 / 6 / 7
+10/26 21:17:53   Actual Player Damage: 2536 Actual Building Damage: 126 Actual Healing: 0
+10/26 21:17:53   Scaled Player Damage: 2154 Scaled Building Damage: 84 Scaled Healing: 0
+10/26 21:17:53   XP per min: 173  Gold per min: 215  Claimed Farm: 1913  Support Gold 0
+10/26 21:17:53 Team 1 Player 3 m_unAccountID = 0  Items: 116, 7, 142, 36, 29, 17, 182, 2, 18
+10/26 21:17:53   LastHit = 76  Deny = 18  ClaimedMiss = 19  ClaimedDeny = 0  Miss = 35
+10/26 21:17:53   Level: 15 Gold: 442  KDA: 8 / 5 / 5
+10/26 21:17:53   Actual Player Damage: 9828 Actual Building Damage: 244 Actual Healing: 0
+10/26 21:17:53   Scaled Player Damage: 7587 Scaled Building Damage: 144 Scaled Healing: 0
+10/26 21:17:53   XP per min: 304  Gold per min: 345  Claimed Farm: 4788  Support Gold 0
+10/26 21:17:53 Team 1 Player 4 m_unAccountID = 0  Items: 0, 0, 0, 0, 0, 0, 0, 0, 0
+10/26 21:17:53   LastHit = 28  Deny = 9  ClaimedMiss = 11  ClaimedDeny = 0  Miss = 24
+10/26 21:17:53   Level: 13 Gold: 4517  KDA: 0 / 11 / 5
+10/26 21:17:53   Actual Player Damage: 1322 Actual Building Damage: 131 Actual Healing: 0
+10/26 21:17:53   Scaled Player Damage: 1359 Scaled Building Damage: 72 Scaled Healing: 0
+10/26 21:17:53   XP per min: 186  Gold per min: 241  Claimed Farm: 2228  Support Gold 0
+10/26 21:17:53 KILLEATER: Signing out with 0 adjustments
+10/26 21:17:53 KILLEATER: Message has 0 player blocks
+10/26 21:17:53 Not submitting stats. Both teams must have human players.
+10/26 21:17:53 match_id: 0
+10/26 21:17:53 region_id: 4294967295
+10/26 21:17:53 cluster_id: 0
+10/26 21:17:53 [GCClient] Send msg 7494 (k_EMsgServerToGCMatchConnectionStats), 18 bytes
+10/26 21:17:53 S:Gamerules: entering state 'DOTA_GAMERULES_STATE_DISCONNECT'
+10/26 21:17:53 [Server] ReconnectInfo established for playerid=0
+10/26 21:17:53 [Server] PR:SetConnectionState 0:[I:0:0] DOTA_CONNECTION_STATE_DISCONNECTED NETWORK_DISCONNECT_SERVER_SHUTDOWN
+10/26 21:17:53 Setting player 694bb7a2_R0 (Bot) to DOTA_LEAVER_DISCONNECTED
+10/26 21:17:53 CDOTAGamerules:Pause = false PlayerId=-1 fUnpauseDelay=0.00 fPauseDelay=-1.00
+10/26 21:17:53 26: npc_dota_hero_luna
+10/26 21:17:53 [Server] ReconnectInfo established for playerid=1
+10/26 21:17:53 [Server] PR:SetConnectionState 1:[I:0:0] DOTA_CONNECTION_STATE_DISCONNECTED NETWORK_DISCONNECT_SERVER_SHUTDOWN
+10/26 21:17:53 Setting player 694bb7a2_R1 (Bot) to DOTA_LEAVER_DISCONNECTED
+10/26 21:17:53 CDOTAGamerules:Pause = false PlayerId=-1 fUnpauseDelay=0.00 fPauseDelay=-1.00
+10/26 21:17:53 17: npc_dota_hero_dragon_knight
+10/26 21:17:53 55: npc_dota_courier
+10/26 21:17:53 [Server] ReconnectInfo established for playerid=2
+10/26 21:17:53 [Server] PR:SetConnectionState 2:[I:0:0] DOTA_CONNECTION_STATE_DISCONNECTED NETWORK_DISCONNECT_SERVER_SHUTDOWN
+10/26 21:17:53 Setting player 694bb7a2_R2 (Bot) to DOTA_LEAVER_DISCONNECTED
+10/26 21:17:53 CDOTAGamerules:Pause = false PlayerId=-1 fUnpauseDelay=0.00 fPauseDelay=-1.00
+10/26 21:17:53 51: npc_dota_hero_doom_bringer
+10/26 21:17:53 [Server] ReconnectInfo established for playerid=3
+10/26 21:17:53 [Server] PR:SetConnectionState 3:[I:0:0] DOTA_CONNECTION_STATE_DISCONNECTED NETWORK_DISCONNECT_SERVER_SHUTDOWN
+10/26 21:17:53 Setting player 694bb7a2_R3 (Bot) to DOTA_LEAVER_DISCONNECTED
+10/26 21:17:53 CDOTAGamerules:Pause = false PlayerId=-1 fUnpauseDelay=0.00 fPauseDelay=-1.00
+10/26 21:17:53 23: npc_dota_hero_techies
+10/26 21:17:53 [Server] ReconnectInfo established for playerid=4
+10/26 21:17:53 [Server] PR:SetConnectionState 4:[I:0:0] DOTA_CONNECTION_STATE_DISCONNECTED NETWORK_DISCONNECT_SERVER_SHUTDOWN
+10/26 21:17:53 Setting player 694bb7a2_R4 (Bot) to DOTA_LEAVER_DISCONNECTED
+10/26 21:17:53 CDOTAGamerules:Pause = false PlayerId=-1 fUnpauseDelay=0.00 fPauseDelay=-1.00
+10/26 21:17:53 53: npc_dota_hero_zuus
+10/26 21:17:53 [Server] ReconnectInfo established for playerid=5
+10/26 21:17:53 [Server] PR:SetConnectionState 5:[I:0:0] DOTA_CONNECTION_STATE_DISCONNECTED NETWORK_DISCONNECT_SERVER_SHUTDOWN
+10/26 21:17:53 Setting player 694bb7a2_D0 (Bot) to DOTA_LEAVER_DISCONNECTED
+10/26 21:17:53 CDOTAGamerules:Pause = false PlayerId=-1 fUnpauseDelay=0.00 fPauseDelay=-1.00
+10/26 21:17:53 12: npc_dota_hero_mirana
+10/26 21:17:53 20: npc_dota_courier
+10/26 21:17:53 [Server] ReconnectInfo established for playerid=6
+10/26 21:17:53 [Server] PR:SetConnectionState 6:[I:0:0] DOTA_CONNECTION_STATE_DISCONNECTED NETWORK_DISCONNECT_SERVER_SHUTDOWN
+10/26 21:17:53 Setting player 694bb7a2_D1 (Bot) to DOTA_LEAVER_DISCONNECTED
+10/26 21:17:53 CDOTAGamerules:Pause = false PlayerId=-1 fUnpauseDelay=0.00 fPauseDelay=-1.00
+10/26 21:17:53 7: npc_dota_hero_lion
+10/26 21:17:53 [Server] ReconnectInfo established for playerid=7
+10/26 21:17:53 [Server] PR:SetConnectionState 7:[I:0:0] DOTA_CONNECTION_STATE_DISCONNECTED NETWORK_DISCONNECT_SERVER_SHUTDOWN
+10/26 21:17:53 Setting player 694bb7a2_D2 (Bot) to DOTA_LEAVER_DISCONNECTED
+10/26 21:17:53 CDOTAGamerules:Pause = false PlayerId=-1 fUnpauseDelay=0.00 fPauseDelay=-1.00
+10/26 21:17:53 2: npc_dota_hero_puck
+10/26 21:17:53 [Server] ReconnectInfo established for playerid=8
+10/26 21:17:53 [Server] PR:SetConnectionState 8:[I:0:0] DOTA_CONNECTION_STATE_DISCONNECTED NETWORK_DISCONNECT_SERVER_SHUTDOWN
+10/26 21:17:53 Setting player 694bb7a2_D3 (Bot) to DOTA_LEAVER_DISCONNECTED
+10/26 21:17:53 CDOTAGamerules:Pause = false PlayerId=-1 fUnpauseDelay=0.00 fPauseDelay=-1.00
+10/26 21:17:53 23: npc_dota_hero_phantom_assassin
+10/26 21:17:53 [Server] ReconnectInfo established for playerid=9
+10/26 21:17:53 [Server] PR:SetConnectionState 9:[I:0:0] DOTA_CONNECTION_STATE_DISCONNECTED NETWORK_DISCONNECT_SERVER_SHUTDOWN
+10/26 21:17:53 Setting player 694bb7a2_D4 (Bot) to DOTA_LEAVER_DISCONNECTED
+10/26 21:17:53 [Server] Client (account 0) tried to execute invalid order (20). Unit is dead.
+10/26 21:17:53 CDOTAGamerules:Pause = false PlayerId=-1 fUnpauseDelay=0.00 fPauseDelay=-1.00
+10/26 21:17:55 CDOTAHLTVDirector::FinishRecording  m_szLastReplayFilename = replays/auto-20191026-2113-start-dotaservice.dem
+10/26 21:17:55 [HLTV Server] Completed SourceTV demo "replays/auto-20191026-2113-start-dotaservice.dem", recording time 2153.9
+10/26 21:17:55 CDOTAHLTVDirector::UploadReplay m_szLastReplayFilename = replays/auto-20191026-2113-start-dotaservice.dem
+10/26 21:17:55 CDOTAHLTVDirector::UploadReplay: Not uploading replay as we didn't submit match stats.
+10/26 21:17:55 Discarding replay replays/auto-20191026-2113-start-dotaservice.dem
+10/26 21:17:55 Renamed replay replays/auto-20191026-2113-start-dotaservice.dem to replays/discarded/replays/auto-20191026-2113-start-dotaservice.dem
+10/26 21:17:55 Terminating after game.
+10/26 21:17:55 QuitServer() executing "quit"
+10/26 21:17:55 [HostStateManager] CHostStateMgr::QueueNewRequest( Quitting, 3 )
+10/26 21:17:56 [HLTV Server] SourceTV shutting down
+10/26 21:17:56 [HLTV Server] CHLTVServer::Shutdown
+10/26 21:17:56 CDOTAGamerules:Pause = false PlayerId=-1 fUnpauseDelay=0.00 fPauseDelay=-1.00
+10/26 21:17:56 [Server] CNetworkGameServerBase::SetServerState (ss_active -> ss_dead)
+10/26 21:17:56 [stringtables] HLTV:  CNetworkStringTableContainer::RemoveAllTables:  removing 20 tables
+10/26 21:17:56 [Server] SV:  Server shutting down: NETWORK_DISCONNECT_EXITING (59)
+10/26 21:17:56 [Server] CNetworkGameServerBase::SetServerState (ss_active -> ss_dead)
+10/26 21:17:56 [Server] SV:  AsyncUnloadSpawnGroup( 18 ) -- no such group
+10/26 21:17:56 [Server] SV:  AsyncUnloadSpawnGroup( 6 ) -- no such group
+10/26 21:17:56 [Server] SV:  IGameSystem::LoopDeactivateAllSystems
+10/26 21:17:56 [Host] HO:  IGameSystem::LoopDeactivateAllSystems
+10/26 21:17:56 [stringtables] SV:  CNetworkStringTableContainer::RemoveAllTables:  removing 20 tables
+10/26 21:17:56 [Server] SV:  CGameRulesGameSystem::GameShutdown uninstalled game rules
+10/26 21:17:56 [Server] SV:  CGameRules::CGameRules destructed
+10/26 21:17:56 [HostStateManager] Quitting
+10/26 21:17:56 Error writing user config file 'cfg/user_keys_0_slot0.vcfg'

@@ -45,6 +45,9 @@ def do_rollout(model, hero_ids, port, verbose=False):
         elif value == 1:
             print('Radiant Victory')
             break
+        elif done:
+            print('Done but no victory')
+            break
         turn += 1
     all_actions.append(action)
     all_states.append(state)
