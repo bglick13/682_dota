@@ -1,1 +1,0 @@
-return '{"game_id":"84deed88-f832-11e9-a73b-4cedfb6c1e84","ticks_per_observation":15,"hero_picks":[{"teamId":"TEAM_RADIANT","heroId":"NPC_DOTA_HERO_PUCK","controlMode":"HERO_CONTROL_MODE_DEFAULT"},{"teamId":"TEAM_RADIANT","heroId":"NPC_DOTA_HERO_NIGHT_STALKER","controlMode":"HERO_CONTROL_MODE_DEFAULT"}]}'
