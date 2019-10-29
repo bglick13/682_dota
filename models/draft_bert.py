@@ -14,6 +14,7 @@ import copy
 pd.set_option('display.max_rows', 200)
 cuda = torch.cuda.is_available()
 
+
 class DraftBertTasks(Enum):
     DRAFT_PREDICTION = 1
     DRAFT_MATCHING = 2

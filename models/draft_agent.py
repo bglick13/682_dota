@@ -1,5 +1,5 @@
 import numpy as np
-import torch
+from torch import nn, FloatTensor, LongTensor
 from models.draft_bert import DraftBert
 from collections import deque
 from typing import Union
@@ -7,7 +7,8 @@ from draft.draft_env import DraftState
 from search.uct2 import UCTNode, UCT
 from torch.functional import F
 
-class DummyAgent(torch.nn.Module):
+
+class DummyAgent(nn.Module):
     def __init__(self):
         super().__init__()
         self.memory = deque(maxlen=1000)
@@ -97,7 +98,7 @@ class DraftAgent(DummyAgent):
         action, value, values = self.root.best_child()
         next_state = state.take_action(action)
         nn_value = self.get_preds(next_state)[1]
-        p = F.softmax(torch.FloatTensor(values), -1).numpy()
+        p = F.softmax(FloatTensor(values), -1).numpy()
         return action, value, p, nn_value
 
     def get_preds(self, leaf: Union[UCTNode, DraftState]):
@@ -106,7 +107,7 @@ class DraftAgent(DummyAgent):
         else:
             state = leaf
         s = state.state
-        s_in = torch.LongTensor([s])
+        s_in = LongTensor([s])
         s_in.requires_grad = False
         # if torch.cuda.is_available():
         #     s_in = s_in.cuda()

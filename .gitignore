@@ -2,7 +2,7 @@
 *.xml
 
 .idea/
-
+rollout_results/
 secret.py
 
 *.pyc
