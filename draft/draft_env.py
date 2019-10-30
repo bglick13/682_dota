@@ -194,9 +194,14 @@ class DraftState(ABC):
         print('got client')
         assert os.path.isdir(local_volume), 'Incorrect mount point'
         print(f'Mounting local volume: {local_volume}')
+        job_number = self.port - 13337
+        cpus = f'{job_number*2}-{job_number*2+1}'
         container = client.containers.run('dotaservice',
                                           volumes={local_volume: {'bind': '/tmp', 'mode': 'rw'}},
                                           ports={f'{self.port}/tcp': self.port},
+                                          cpuset_cpus=cpus,
+                                          cpu_period=50000,
+                                          cpu_quota=25000,
                                           detach=True)
         print('launched container')
         logger.debug('launched container')
