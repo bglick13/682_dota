@@ -37,7 +37,23 @@ def generate_clustering(embeddings, nodes, algorithm, reduction):
 
 	y = clustering.labels_
 
-	if reduction == 'tsne':
+	if reduction == 'tsne_2':
+		X_tsne = TSNE(n_components=2, random_state=0).fit_transform(X)
+		x_min, x_max = np.min(X_tsne, 0), np.max(X_tsne, 0)
+		X_tight = (X_tsne - x_min) / (x_max - x_min)
+
+		colors = np.random.choice(list(CSS4_COLORS.keys()), len(np.unique(y)))
+
+		fig = plt.figure()
+		ax = fig.add_subplot(111)
+		for i in range(len(colors)):
+			tmp = X_tight[y == i]
+			ax.scatter(tmp[:,:1], tmp[:,1:2], c = colors[i])
+
+		plt.xticks([]), plt.yticks([])
+		plt.show()
+
+	if reduction == 'tsne_3':
 		X_tsne = TSNE(n_components=3, random_state=0).fit_transform(X)
 		x_min, x_max = np.min(X_tsne, 0), np.max(X_tsne, 0)
 		X_tight = (X_tsne - x_min) / (x_max - x_min)
