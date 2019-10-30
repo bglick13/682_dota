@@ -196,17 +196,18 @@ class DraftState(ABC):
         print(f'Mounting local volume: {local_volume}')
         job_number = self.port - 13337
         cpus = f'{job_number*2}-{job_number*2+1}'
+        print(f'Job number {job_number} working on cpus {cpus}')
         container = client.containers.run('dotaservice',
                                           volumes={local_volume: {'bind': '/tmp', 'mode': 'rw'}},
                                           ports={f'{self.port}/tcp': self.port},
                                           cpuset_cpus=cpus,
                                           cpu_period=50000,
-                                          cpu_quota=25000,
+                                          cpu_quota=45000,
                                           detach=True)
         print('launched container')
         logger.debug('launched container')
         time.sleep(10)
-        logger.debug(container.logs())
+        print(container.logs())
 
     def get_winner(self):
         assert self.done, 'Draft is not complete'
@@ -230,7 +231,7 @@ class DraftState(ABC):
                     where = f.tell()
                     line = f.readline()
                     if not line:
-                        time.sleep(1)
+                        time.sleep(10)
                         f.seek(where)
                     else:
                         if 'Building' in line:
