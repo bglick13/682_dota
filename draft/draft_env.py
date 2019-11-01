@@ -203,6 +203,7 @@ class DraftState(ABC):
                                           cpuset_cpus=cpus,
                                           cpu_period=50000,
                                           cpu_quota=45000,
+                                          remove=True,
                                           detach=True)
         print('launched container')
         logger.debug('launched container')

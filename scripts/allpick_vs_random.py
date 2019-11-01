@@ -8,6 +8,7 @@ from collections import deque
 import pickle
 from multiprocessing import Pool
 import time
+from functools import partial
 
 
 def do_rollout(model, hero_ids, port, verbose=False):
@@ -93,13 +94,14 @@ if __name__ == '__main__':
     hero_ids = pd.read_json('../const/draft_bert_hero_ids.json', orient='records')
 
     memory = deque(maxlen=memory_size)
+    f = partial(do_rollout, model, hero_ids)
 
     start = time.time()
     for batch_of_games in range(n_games // n_jobs):
         # pool = ProcessPoolExecutor(2)
-        pool = Pool(n_jobs)
-        results = pool.starmap(do_rollout, [(model, hero_ids, port + i) for i in range(n_jobs)])
-        memory.extend(results)
+        with Pool(n_jobs) as pool:
+            results = pool.map_async(f, [port + i for i in range(n_jobs)]).get()
+            memory.extend(results)
 
     with open('../data/self_play/allpick_vs_random_memory.pickle', 'wb') as f:
         pickle.dump(memory, f)
