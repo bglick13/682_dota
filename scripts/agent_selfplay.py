@@ -1,4 +1,4 @@
-from draft.draft_env import CaptainModeDraft
+#from draft.draft_env import CaptainModeDraft
 from models.draft_agent import DraftAgent
 import pandas as pd
 import numpy as np

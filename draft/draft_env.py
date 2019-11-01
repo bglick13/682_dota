@@ -184,6 +184,8 @@ class DraftState(ABC):
         local_volume = f'../rollout_results'
         local_volume = os.path.dirname(os.path.abspath(local_volume))
         local_volume = os.path.join(local_volume, 'rollout_results')
+        # if not os.path.isdir(local_volume):
+            # os.mkdir(local_volume)
         local_volume = os.path.join(local_volume, game_id)
         os.mkdir(local_volume)
         config.game_id = game_id
