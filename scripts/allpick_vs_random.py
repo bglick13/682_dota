@@ -1,13 +1,13 @@
-import os, sys
+import os
+import sys
 
 sys.path.append(os.path.join('..'))
 
 from draft.draft_env import CaptainModeDraft
-from models.draft_agent import DraftAgent, DraftBert
+from models.draft_agent import DraftAgent
 import pandas as pd
 import numpy as np
 import torch
-from typing import List
 from collections import deque
 import pickle
 from multiprocessing import Pool
