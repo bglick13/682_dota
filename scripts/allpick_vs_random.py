@@ -94,7 +94,7 @@ if __name__ == '__main__':
     model.requires_grad = False
 
     memory_size = 500000
-    n_jobs = 4
+    n_jobs = 20
     n_games = 4
     port = 13337
     verbose = True
@@ -103,15 +103,20 @@ if __name__ == '__main__':
     memory = deque(maxlen=memory_size)
     f = partial(do_rollout, model, hero_ids)
 
-    start = time.time()
-    for batch_of_games in range(n_games // n_jobs):
-        with Pool(n_jobs) as pool:
-            results = pool.map_async(f, [port + i for i in range(n_jobs)]).get()
-            memory.extend(results)
-        docker.prune()
+    times = []
 
+    start = time.time()
+    for i in range(5):
+        start_batch = time.time()
+        for batch_of_games in range(n_games // n_jobs):
+            with Pool(n_jobs) as pool:
+                results = pool.map_async(f, [port + i for i in range(n_jobs)]).get()
+                memory.extend(results)
+        times.append(time.time() - start_batch)
     end = time.time()
     with open('../data/self_play/allpick_vs_random_memory.pickle', 'wb') as f:
         pickle.dump(memory, f)
 
-    print(f'Played {n_games} games using {n_jobs} jobs in {time.time() - start}s')
+    print(f'Played {n_games} games using {n_jobs} jobs in 5 batches in {times} seconds each and total time was {end - start} seconds.')
+
+    # print(f'Played {n_games} games using {n_jobs} jobs in {time.time() - start}s')

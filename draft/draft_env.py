@@ -238,12 +238,12 @@ class DraftState(ABC):
                         f.seek(where)
                     else:
                         if 'Building' in line:
-                            print(f'{line}')
+                            print(f'{game_id} : {line}')
                         if 'npc_dota_badguys_fort destroyed' in line:
-                            print(f'Radiant Victory')
+                            print(f'{game_id} : Radiant Victory')
                             return 1
                         elif 'npc_dota_goodguys_fort destroyed' in line:
-                            print(f'Dire Victory')
+                            print(f'{game_id} : Dire Victory')
                             return 0
         except FileNotFoundError as e:
             logger.error(e)
