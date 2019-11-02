@@ -8,6 +8,7 @@ from collections import deque
 import pickle
 from multiprocessing import Pool
 import time
+import docker
 
 
 def do_rollout(model, hero_ids, port, verbose=False):
@@ -73,8 +74,10 @@ if __name__ == '__main__':
     for batch_of_games in range(n_games // n_jobs):
         # pool = ProcessPoolExecutor(2)
         pool = Pool(n_jobs)
-        results = pool.starmap(do_rollout, [('../weights/draft_bert_pretrain.torch', hero_ids, port + i) for i in range(n_jobs)])
+        # results = pool.starmap(do_rollout, [('../weights/draft_bert_pretrain.torch', hero_ids, port + i) for i in range(n_jobs)])
+        results = poolstarmap()
         memory.extend(results)
+        docker.prune()
 
     with open('../data/self_play/memory.pickle', 'wb') as f:
         pickle.dump(memory, f)
