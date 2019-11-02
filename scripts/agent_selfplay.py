@@ -1,27 +1,23 @@
-#from draft.draft_env import CaptainModeDraft
-from models.draft_agent import DraftAgent
-import pandas as pd
-import numpy as np
-import torch
-from typing import List
-from collections import deque
 import pickle
-from multiprocessing import Pool
 import time
 import docker
+from collections import deque
+from functools import partial
+from multiprocessing import Pool
+
+import numpy as np
+import pandas as pd
+from torch import load, device
+from torch.cuda import empty_cache
+
+from draft.draft_env import CaptainModeDraft
+from models.draft_agent import DraftAgent, DraftBert
 
 
 def do_rollout(model, hero_ids, port, verbose=False):
-    if not torch.cuda.is_available():
-        model = torch.load(model, map_location=torch.device('cpu'))
-    else:
-        model = torch.load(model)
-
-    players: List[DraftAgent] = [DraftAgent(model=model, pick_first=None),
-                                 DraftAgent(model=model, pick_first=None)]
-    players = np.random.permutation(players)
-    players[0].pick_first = True
-    players[1].pick_first = False
+    # player_1_pick_first = np.random.choice([True, False])
+    player1: DraftAgent = DraftAgent(model=model, pick_first=True)
+    player2: DraftAgent = DraftAgent(model=model, pick_first=False)
     draft = CaptainModeDraft(hero_ids, port)
     state = draft.reset()
     turn = 0
@@ -31,15 +27,22 @@ def do_rollout(model, hero_ids, port, verbose=False):
     all_states = []
 
     while True:
-        if draft.draft_order[draft.next_pick_index] < 13:
-            action, mcts_value, p, nn_value = players[0].act(state, action, num_reads=100)
+        try:
+            npi = draft.draft_order[draft.next_pick_index]
+        except IndexError:
+            print(draft.__dict__)
+            print(draft.state.__dict__)
+            raise IndexError
+
+        if npi < 13:
+            action, mcts_value, p, nn_value = player1.act(state, action, num_reads=100)
         else:
-            action, mcts_value, p, nn_value = players[1].act(state, action, num_reads=100)
-        all_states.append(state)
+            action, mcts_value, p, nn_value = player2.act(state, action, num_reads=100)
+
+        all_states.append(state.game_state)
         all_actions.append(action)
         state, value, done = draft.step(action)
-        if verbose:
-            print(f'\nTurn {turn}:\nAction: {action}, MCTS Value: {mcts_value}, NN Value: {nn_value}\n{state}')
+
         if value == 0:  # Dire victory
             print('Dire victory')
             break
@@ -51,16 +54,21 @@ def do_rollout(model, hero_ids, port, verbose=False):
             break
         turn += 1
     all_actions.append(action)
-    all_states.append(state)
+    all_states.append(state.game_state)
 
     # TODO: I'm really not confident this is right - it's worth double and triple checking
     all_values = [value] * 22
-    # all_values[[0, 2, 4, 6, 9, 11, 13, 15, 17, 19, 20]] = value
-    # all_values[[1, 3, 5, 7, 8, 10, 12, 14, 16, 18, 21]] = 1 - value
-    return all_actions, all_states, all_values
+    savps = np.hstack((all_states, all_actions, all_values))
+    del model
+    empty_cache()
+    return savps
 
 
 if __name__ == '__main__':
+    model: DraftBert = load('../weights/final_weights/draft_bert_pretrain_captains_mode.torch',
+                            map_location=device('cpu'))
+    model.eval()
+    model.requires_grad = False
     memory_size = 500000
     n_jobs = 2
     n_games = 2
@@ -69,16 +77,14 @@ if __name__ == '__main__':
     hero_ids = pd.read_json('../const/draft_bert_hero_ids.json', orient='records')
 
     memory = deque(maxlen=memory_size)
-
+    f = partial(do_rollout, model, hero_ids)
     start = time.time()
     for batch_of_games in range(n_games // n_jobs):
-        # pool = ProcessPoolExecutor(2)
-        pool = Pool(n_jobs)
-        # results = pool.starmap(do_rollout, [('../weights/draft_bert_pretrain.torch', hero_ids, port + i) for i in range(n_jobs)])
-        results = poolstarmap()
-        memory.extend(results)
-        docker.prune()
+        with Pool(n_jobs) as pool:
+            results = pool.map_async(f, [port + i for i in range(n_jobs)]).get()
+            memory.extend(results)
 
-    with open('../data/self_play/memory.pickle', 'wb') as f:
+    with open(f'../data/self_play/self_play_{time.time()}.pickle', 'wb') as f:
         pickle.dump(memory, f)
     print(f'Played {n_games} games using {n_jobs} jobs in {time.time() - start}s')
+

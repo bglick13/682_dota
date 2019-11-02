@@ -1,10 +1,10 @@
 import os
-from abc import ABC
 import time
-import datetime
+from abc import ABC
+
 import numpy as np
-from sklearn.preprocessing import LabelEncoder
 import pandas as pd
+
 try:
     from dotaservice.protos.DotaService_pb2 import *
     from dotaservice.protos.dota_shared_enums_pb2 import DOTA_GAMEMODE_ALL_DRAFT

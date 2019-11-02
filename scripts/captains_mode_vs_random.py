@@ -1,14 +1,17 @@
-from draft.draft_env import CaptainModeDraft
-from models.draft_agent import DraftAgent, DraftBert
-import pandas as pd
+import pickle
+import time
+from collections import deque
+from functools import partial
+
 import numpy as np
+import pandas as pd
 from torch import load, device
 from torch.cuda import empty_cache
-from collections import deque
-import pickle
-from torch.multiprocessing import Pool, Process, set_start_method
-import time
-from functools import partial
+from torch.multiprocessing import Pool
+
+from draft.draft_env import CaptainModeDraft
+from models.draft_agent import DraftAgent, DraftBert
+
 
 def do_rollout(model, hero_ids, port, verbose=False):
     # if not torch.cuda.is_available():
