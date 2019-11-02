@@ -209,8 +209,8 @@ class DraftState(ABC):
                                           detach=True)
         print('launched container')
         logger.debug('launched container')
-        time.sleep(10)
-        print(container.logs())
+        client.close()
+        return container
 
     def get_winner(self):
         assert self.done, 'Draft is not complete'
@@ -218,35 +218,41 @@ class DraftState(ABC):
 
         config = self._get_game_config()
         print(f"Calling play for game id: {game_id}")
-
-        self._play(config=config, game_id=game_id)
+        client = docker.from_env()
+        container = self._play(config=config, game_id=game_id)
         print('returned from play')
         local_volume = f'../rollout_results'
         local_volume = os.path.dirname(os.path.abspath(local_volume))
         local_volume = os.path.join(local_volume, 'rollout_results')
         local_volume = os.path.join(local_volume, game_id)
         log_file_path = f'{local_volume}/{game_id}/bots/console.log'
-        time.sleep(10)
+        while container in client.containers.list():
+            time.sleep(10)
         try:
             with open(log_file_path, 'r') as f:
-                print(f'Opened file: {log_file_path}')
-                while True:
-                    where = f.tell()
-                    line = f.readline()
-                    if not line:
-                        time.sleep(10)
-                        f.seek(where)
-                    else:
-                        if 'Building' in line:
-                            print(f'{game_id} : {line}')
-                        if 'npc_dota_badguys_fort destroyed' in line:
-                            print(f'{game_id} : Radiant Victory')
-                            return 1
-                        elif 'npc_dota_goodguys_fort destroyed' in line:
-                            print(f'{game_id} : Dire Victory')
-                            return 0
+                if 'goodguys_fort destroyed' in f.read():
+                    return 0
+                elif 'badguys_fort destroyed' in f.read():
+                    return 1
+                # print(f'Opened file: {log_file_path}')
+                # while True:
+                #     where = f.tell()
+                #     line = f.readline()
+                #     if not line:
+                #         time.sleep(10)
+                #         f.seek(where)
+                #     else:
+                #         if 'Building' in line:
+                #             print(f'{game_id} : {line}')
+                #         if 'npc_dota_badguys_fort destroyed' in line:
+                #             print(f'{game_id} : Radiant Victory')
+                #             return 1
+                #         elif 'npc_dota_goodguys_fort destroyed' in line:
+                #             print(f'{game_id} : Dire Victory')
+                #             return 0
         except FileNotFoundError as e:
             logger.error(e)
+        client.close()
 
     def __str__(self):
         radiant = self.heros.loc[self.heros['model_id'].isin(self.radiant), 'localized_name']

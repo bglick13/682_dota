@@ -68,7 +68,6 @@ def do_rollout(model, hero_ids, port, verbose=False):
             break
         turn += 1
 
-
     if (value == 1 and player.pick_first) or (value == 0 and not player.pick_first):
         print("Agent victory!")
     else:
@@ -94,7 +93,7 @@ if __name__ == '__main__':
     model.requires_grad = False
 
     memory_size = 500000
-    n_jobs = 20
+    n_jobs = 4
     n_games = 4
     port = 13337
     verbose = True
