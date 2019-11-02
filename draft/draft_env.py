@@ -17,6 +17,7 @@ import pickle
 import docker
 import copy
 import logging
+import re
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 logger = logging.getLogger(__name__)
@@ -51,8 +52,6 @@ class CaptainModeDraft:
         done = 0
 
         if self.state.done:
-            print('Final State:\n')
-            print(self.state)
             value = self.state.get_winner()
             done = 1
 
@@ -191,23 +190,19 @@ class DraftState(ABC):
         config.game_id = game_id
         with open(f'{local_volume}/config.pickle', 'wb') as f:
             pickle.dump(config, f)
-        print('getting_client')
         client = docker.from_env()
-        print('got client')
         assert os.path.isdir(local_volume), 'Incorrect mount point'
-        print(f'Mounting local volume: {local_volume}')
         job_number = self.port - 13337
         cpus = f'{job_number*2}-{job_number*2+1}'
         print(f'Job number {job_number} working on cpus {cpus}')
         container = client.containers.run('dotaservice',
                                           volumes={local_volume: {'bind': '/tmp', 'mode': 'rw'}},
-                                          ports={f'{self.port}/tcp': self.port},
+                                          # ports={f'{self.port}/tcp': self.port},
                                           cpuset_cpus=cpus,
                                           cpu_period=50000,
-                                          cpu_quota=45000,
+                                          cpu_quota=49900,
                                           remove=True,
                                           detach=True)
-        print('launched container')
         logger.debug('launched container')
         client.close()
         return container
@@ -215,41 +210,51 @@ class DraftState(ABC):
     def get_winner(self):
         assert self.done, 'Draft is not complete'
         game_id = str(uuid.uuid1())
-
+        cutoff = 6 * 60
         config = self._get_game_config()
-        print(f"Calling play for game id: {game_id}")
         client = docker.from_env()
         container = self._play(config=config, game_id=game_id)
-        print('returned from play')
         local_volume = f'../rollout_results'
         local_volume = os.path.dirname(os.path.abspath(local_volume))
         local_volume = os.path.join(local_volume, 'rollout_results')
         local_volume = os.path.join(local_volume, game_id)
         log_file_path = f'{local_volume}/{game_id}/bots/console.log'
-        while container in client.containers.list():
-            time.sleep(10)
+        start = time.time()
+        time.sleep(30)
+        radiant_progress = 0
+        dire_progress = 0
+        # while container in client.containers.list():
+        #     pass
         try:
             with open(log_file_path, 'r') as f:
-                if 'goodguys_fort destroyed' in f.read():
-                    return 0
-                elif 'badguys_fort destroyed' in f.read():
-                    return 1
-                # print(f'Opened file: {log_file_path}')
-                # while True:
-                #     where = f.tell()
-                #     line = f.readline()
-                #     if not line:
-                #         time.sleep(10)
-                #         f.seek(where)
-                #     else:
-                #         if 'Building' in line:
-                #             print(f'{game_id} : {line}')
-                #         if 'npc_dota_badguys_fort destroyed' in line:
-                #             print(f'{game_id} : Radiant Victory')
-                #             return 1
-                #         elif 'npc_dota_goodguys_fort destroyed' in line:
-                #             print(f'{game_id} : Dire Victory')
-                #             return 0
+                # buffer = f.read()
+                # if 'goodguys_fort destroyed' in buffer:
+                #     return 0
+                # elif 'badguys_fort destroyed' in buffer:
+                #     return 1
+                print(f'Opened file: {log_file_path}')
+                while True:
+                    if time.time() - start > cutoff:
+                        return radiant_progress > dire_progress
+                    where = f.tell()
+                    line = f.readline()
+                    if not line:
+                        time.sleep(10)
+                        f.seek(where)
+                    else:
+                        if 'Building' in line:
+                            print(f'{game_id} : {line}')
+                            if 'badguys' in line:
+                                radiant_progress += 1
+                            if 'goodguys' in line:
+                                dire_progress += 1
+
+                            if 'npc_dota_badguys_fort destroyed' in line:
+                                print(f'{game_id} : Radiant Victory')
+                                return 1
+                            elif 'npc_dota_goodguys_fort destroyed' in line:
+                                print(f'{game_id} : Dire Victory')
+                                return 0
         except FileNotFoundError as e:
             logger.error(e)
         client.close()

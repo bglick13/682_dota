@@ -10,7 +10,7 @@ import numpy as np
 import torch
 from collections import deque
 import pickle
-from multiprocessing import Pool
+from multiprocessing import Pool, Process
 import time
 from functools import partial
 import docker
@@ -37,8 +37,6 @@ def do_rollout(model, hero_ids, port, verbose=False):
         try:
             npi = draft.draft_order[draft.next_pick_index]
         except IndexError:
-            print(draft.__dict__)
-            print(draft.state.__dict__)
             raise IndexError
 
         if npi < 13:
@@ -103,9 +101,14 @@ if __name__ == '__main__':
     f = partial(do_rollout, model, hero_ids)
 
     times = []
-
+    cpu_assignments = dict((f'{job_number*2}-{job_number*2+1}', None) for job_number in range(n_jobs))
+    jobs_assigned = 0
+    # while jobs_assigned < n_games:
+    #     for cpu in cpu_assignments.keys():
+    #         if cpu_assignments[cpu] is None:
+    #             p = Process(target=f)
     start = time.time()
-    for i in range(5):
+    for i in range(2):
         start_batch = time.time()
         for batch_of_games in range(n_games // n_jobs):
             with Pool(n_jobs) as pool:
