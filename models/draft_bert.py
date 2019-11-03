@@ -48,6 +48,14 @@ class CaptainsModeDataset(Dataset):
         self.CLS = cls
         self.MASK = int(mask)
 
+
+        self.draft_order = np.array([1, 13, 2, 14, 3, 15,
+                                     4, 16, 5, 17,
+                                     6, 18, 7, 19,
+                                     8, 20, 9, 21,
+                                     10, 22,
+                                     11, 23])
+
         self.matchups = []
         self.wins = []
         self.mask_idxs = np.append(np.arange(1, 12), np.arange(13, 24))
@@ -95,15 +103,17 @@ class CaptainsModeDataset(Dataset):
         matchup = np.tile(matchup, (22, 1))
 
         m = copy.deepcopy(matchup)
-        mask = subsequent_mask(23).squeeze()
-        mask = mask[:-1, 1:]
-        # _m = m[:, self.mask_idxs]
-        m[mask.astype(bool)] = int(self.MASK)
         m = np.hstack((np.ones((22, 1)) * self.CLS,
                        m[:, :12],
                        np.ones((22, 1)) * self.SEP,
                        m[:, 12:],
                        np.ones((22, 1)) * self.SEP))
+        mask = np.zeros_like(m)
+        mask[np.arange(len(mask)), self.draft_order] = 1
+        # mask = subsequent_mask(23).squeeze()
+        # mask = mask[:-1, 1:]
+        # _m = m[:, self.mask_idxs]
+        m[mask.astype(bool)] = int(self.MASK)
         m = torch.LongTensor(m)
 
         return m, t, torch.LongTensor([self.wins[index]]).repeat(22)
@@ -515,6 +525,7 @@ class DraftBert(torch.nn.Module):
                     win_batch = win_batch.cuda()
 
                 out = self.forward(src_batch)  # -> shape (batch_size, sequence_length, embedding_dim)
+                # TODO: This is bad and I should feel bad - this needs to be draft order not just left to right
                 to_predict = (src_batch == self.mask_idx).int().detach().cpu().numpy().argmax(-1)
                 to_predict = out[range(len(out)), to_predict]
                 mask_pred = self.get_masked_output(to_predict)
