@@ -70,21 +70,27 @@ if __name__ == '__main__':
     model.eval()
     model.requires_grad = False
     memory_size = 500000
-    n_jobs = 2
-    n_games = 2
+    n_jobs = 4
+    n_games = 400
     port = 13337
     verbose = True
     hero_ids = pd.read_json('../const/draft_bert_hero_ids.json', orient='records')
 
     memory = deque(maxlen=memory_size)
     f = partial(do_rollout, model, hero_ids)
-    start = time.time()
+
     for batch_of_games in range(n_games // n_jobs):
+        start = time.time()
+
+        start_batch = time.time()
         with Pool(n_jobs) as pool:
             results = pool.map_async(f, [port + i for i in range(n_jobs)]).get()
             memory.extend(results)
-
-    with open(f'../data/self_play/self_play_{time.time()}.pickle', 'wb') as f:
+        if (batch_of_games + 1) % 10 == 0:
+            with open(f'../data/self_play/selfplay_{batch_of_games}.pickle', 'wb') as f:
+                pickle.dump(memory, f)
+        end = time.time()
+        print(f'Finished batch {batch_of_games} in {end-start}s')
+    with open(f'../data/self_play/selfplay_{time.time()}.pickle', 'wb') as f:
         pickle.dump(memory, f)
-    print(f'Played {n_games} games using {n_jobs} jobs in {time.time() - start}s')
 

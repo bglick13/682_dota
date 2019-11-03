@@ -28,6 +28,11 @@ def subsequent_mask(size):
     return subsequent_mask
 
 
+# TODO: """Cluster dataset generator for pretraining - similar to captains mode logic probably but instead of
+#  random masking it's sequential. And we'll obviously need to create a clustering object first to generate the
+#  labels"""
+
+
 class CaptainsModeDataset(Dataset):
     def __init__(self, df: Union[pd.DataFrame, str], hero_ids: pd.DataFrame, label_encoder: LabelEncoder,
                  sep: int, cls: int, mask: int, test_pct: float = 0):
@@ -306,6 +311,18 @@ class DraftBert(torch.nn.Module):
                                                    torch.nn.LayerNorm(out_ff_dim),
                                                    Swish(),
                                                    torch.nn.Linear(out_ff_dim, n_heros))
+
+        # TODO: """Add cluster prediction head - this is it but Connor wants to go over it. Actuallly I'm not so sure
+        #  how this should work. Maybe the win output and this head should share layers, since they'll be getting the
+        #  same input at the same time? In that case would we also train on cluster prediction loss during the agent
+        #  update step?
+        #  Or: they could be residual blocks. I.e., we train the cluster head and then the value head gets the hidden
+        #  layer as input and there's a residual block before predicting winner. That could work but it relies on the
+        #  clusters actually providing a good single. While we hope that's the case, we have no proof it is."""
+        self.cluster_output = torch.nn.Sequential(torch.nn.Linear(embedding_dim, out_ff_dim),
+                                                  torch.nn.LayerNorm(out_ff_dim),
+                                                  Swish(),
+                                                  torch.nn.LayerNorm(out_ff_dim, n_clusters))
 
         dictionary_size = n_heros
         self.hero_embeddings = torch.nn.Embedding(dictionary_size, embedding_dim, padding_idx=int(mask_idx))
