@@ -58,10 +58,9 @@ def do_rollout(model, hero_ids, port, verbose=False):
 
     # TODO: I'm really not confident this is right - it's worth double and triple checking
     all_values = [value] * 22
-    savps = np.hstack((all_states, all_actions, all_values))
     del model
     empty_cache()
-    return savps
+    return dict(all_actions=all_actions, all_states=all_states, all_values=all_values)
 
 
 if __name__ == '__main__':
