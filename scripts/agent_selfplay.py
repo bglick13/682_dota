@@ -85,9 +85,6 @@ if __name__ == '__main__':
         with Pool(n_jobs) as pool:
             results = pool.map_async(f, [port + i for i in range(n_jobs)]).get()
             memory.extend(results)
-        if (batch_of_games + 1) % 10 == 0:
-            with open(f'../data/self_play/selfplay_{batch_of_games}.pickle', 'wb') as f:
-                pickle.dump(memory, f)
         end = time.time()
         print(f'Finished batch {batch_of_games} in {end-start}s')
     with open(f'../data/self_play/selfplay_{time.time()}.pickle', 'wb') as f:
