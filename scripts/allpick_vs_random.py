@@ -62,6 +62,8 @@ def do_rollout(model, hero_ids, port, verbose=False):
             print('Radiant Victory')
             break
         elif done:
+            with open('tmp.txt', mode='a+') as f:
+                f.write("poopy\n")
             print('Done but no victory')
             break
         turn += 1
@@ -91,8 +93,8 @@ if __name__ == '__main__':
     model.requires_grad = False
 
     memory_size = 500000
-    n_jobs = 4
-    n_games = 4
+    n_jobs = 1
+    n_games = 20
     port = 13337
     verbose = True
     hero_ids = pd.read_json('../const/draft_bert_hero_ids.json', orient='records')
@@ -108,7 +110,7 @@ if __name__ == '__main__':
     #         if cpu_assignments[cpu] is None:
     #             p = Process(target=f)
     start = time.time()
-    for i in range(2):
+    for i in range(1):
         start_batch = time.time()
         for batch_of_games in range(n_games // n_jobs):
             with Pool(n_jobs) as pool:
