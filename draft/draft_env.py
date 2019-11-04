@@ -210,7 +210,12 @@ class DraftState(ABC):
     def get_winner(self):
         assert self.done, 'Draft is not complete'
         game_id = str(uuid.uuid1())
-        cutoff = 6 * 60
+        cutoff_1 = 1 * 60
+        cutoff_2 = 2 * 60
+        cutoff_3 = 3 * 60
+        cutoff_4 = 4 * 60
+        cutoff_5 = 5 * 60
+        cutoff_6 = 6 * 60
         config = self._get_game_config()
         client = docker.from_env()
         container = self._play(config=config, game_id=game_id)
@@ -223,9 +228,18 @@ class DraftState(ABC):
         time.sleep(30)
         radiant_progress = 0
         dire_progress = 0
+
+        win_check_1 = None
+        win_check_2 = None
+        win_check_3 = None
+        win_check_4 = None
+        win_check_5 = None
+        win_check_6 = None
         # while container in client.containers.list():
         #     pass
         try:
+            with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
+                f.write("\nStarting new game.")
             with open(log_file_path, 'r') as f:
                 # buffer = f.read()
                 # if 'goodguys_fort destroyed' in buffer:
@@ -234,8 +248,19 @@ class DraftState(ABC):
                 #     return 1
                 print(f'Opened file: {log_file_path}')
                 while True:
-                    if time.time() - start > cutoff:
-                        return radiant_progress > dire_progress
+                    tmp_time = time.time()
+                    if tmp_time - start > cutoff_1 and win_check_1 is None:
+                        win_check_1 = (radiant_progress > dire_progress)
+                    if tmp_time - start > cutoff_2 and win_check_2 is None:
+                        win_check_2 = (radiant_progress > dire_progress)
+                    if tmp_time - start > cutoff_3 and win_check_3 is None:
+                        win_check_3 = (radiant_progress > dire_progress)
+                    if tmp_time - start > cutoff_4 and win_check_4 is None:
+                        win_check_4 = (radiant_progress > dire_progress)
+                    if tmp_time - start > cutoff_5 and win_check_5 is None:
+                        win_check_5 = (radiant_progress > dire_progress)
+                    if tmp_time - start > cutoff_6 and win_check_6 is None:
+                        win_check_6 = (radiant_progress > dire_progress)
                     where = f.tell()
                     line = f.readline()
                     if not line:
@@ -251,12 +276,51 @@ class DraftState(ABC):
 
                             if 'npc_dota_badguys_fort destroyed' in line:
                                 print(f'{game_id} : Radiant Victory')
+                                if win_check_1 is not None:
+                                    with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
+                                        f.write("1 min check is " + str(win_check_1 == True))
+                                if win_check_2 is not None:
+                                    with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
+                                        f.write("2 min check is " + str(win_check_2 == True))
+                                if win_check_3 is not None:
+                                    with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
+                                        f.write("3 min check is " + str(win_check_3 == True))
+                                if win_check_4 is not None:
+                                    with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
+                                        f.write("4 min check is " + str(win_check_4 == True))
+                                if win_check_5 is not None:
+                                    with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
+                                        f.write("5 min check is " + str(win_check_5 == True))
+                                if win_check_6 is not None:
+                                    with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
+                                        f.write("6 min check is " + str(win_check_6 == True))
+
                                 return 1
                             elif 'npc_dota_goodguys_fort destroyed' in line:
                                 print(f'{game_id} : Dire Victory')
+                                if win_check_1 is not None:
+                                    with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
+                                        f.write("1 min check is " + str(win_check_1 == False))
+                                if win_check_2 is not None:
+                                    with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
+                                        f.write("2 min check is " + str(win_check_2 == False))
+                                if win_check_3 is not None:
+                                    with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
+                                        f.write("3 min check is " + str(win_check_3 == False))
+                                if win_check_4 is not None:
+                                    with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
+                                        f.write("4 min check is " + str(win_check_4 == False))
+                                if win_check_5 is not None:
+                                    with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
+                                        f.write("5 min check is " + str(win_check_5 == False))
+                                if win_check_6 is not None:
+                                    with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
+                                        f.write("6 min check is " + str(win_check_6 == False))
+
                                 return 0
         except FileNotFoundError as e:
             logger.error(e)
+
         client.close()
 
     def __str__(self):
