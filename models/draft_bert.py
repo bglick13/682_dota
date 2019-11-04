@@ -28,6 +28,11 @@ def subsequent_mask(size):
     return subsequent_mask
 
 
+# TODO: """Cluster dataset generator for pretraining - similar to captains mode logic probably but instead of
+#  random masking it's sequential. And we'll obviously need to create a clustering object first to generate the
+#  labels"""
+
+
 class CaptainsModeDataset(Dataset):
     def __init__(self, df: Union[pd.DataFrame, str], hero_ids: pd.DataFrame, label_encoder: LabelEncoder,
                  sep: int, cls: int, mask: int, test_pct: float = 0):
@@ -42,6 +47,13 @@ class CaptainsModeDataset(Dataset):
         self.SEP = sep
         self.CLS = cls
         self.MASK = int(mask)
+
+        self.draft_order = np.array([1, 13, 2, 14, 3, 15,
+                                     4, 16, 5, 17,
+                                     6, 18, 7, 19,
+                                     8, 20, 9, 21,
+                                     10, 22,
+                                     11, 23])
 
         self.matchups = []
         self.wins = []
@@ -90,15 +102,19 @@ class CaptainsModeDataset(Dataset):
         matchup = np.tile(matchup, (22, 1))
 
         m = copy.deepcopy(matchup)
-        mask = subsequent_mask(23).squeeze()
-        mask = mask[:-1, 1:]
-        # _m = m[:, self.mask_idxs]
-        m[mask.astype(bool)] = int(self.MASK)
         m = np.hstack((np.ones((22, 1)) * self.CLS,
                        m[:, :12],
                        np.ones((22, 1)) * self.SEP,
                        m[:, 12:],
                        np.ones((22, 1)) * self.SEP))
+        mask = np.zeros_like(m)
+        mask[np.arange(len(mask)), self.draft_order] = 1
+        for i in range(len(mask)):
+            mask[i, self.draft_order[i:]] = 1
+        # mask = subsequent_mask(23).squeeze()
+        # mask = mask[:-1, 1:]
+        # _m = m[:, self.mask_idxs]
+        m[mask.astype(bool)] = int(self.MASK)
         m = torch.LongTensor(m)
 
         return m, t, torch.LongTensor([self.wins[index]]).repeat(22)
@@ -307,6 +323,18 @@ class DraftBert(torch.nn.Module):
                                                    Swish(),
                                                    torch.nn.Linear(out_ff_dim, n_heros))
 
+        # TODO: """Add cluster prediction head - this is it but Connor wants to go over it. Actuallly I'm not so sure
+        #  how this should work. Maybe the win output and this head should share layers, since they'll be getting the
+        #  same input at the same time? In that case would we also train on cluster prediction loss during the agent
+        #  update step?
+        #  Or: they could be residual blocks. I.e., we train the cluster head and then the value head gets the hidden
+        #  layer as input and there's a residual block before predicting winner. That could work but it relies on the
+        #  clusters actually providing a good single. While we hope that's the case, we have no proof it is."""
+        self.cluster_output = torch.nn.Sequential(torch.nn.Linear(embedding_dim, out_ff_dim),
+                                                  torch.nn.LayerNorm(out_ff_dim),
+                                                  Swish(),
+                                                  torch.nn.LayerNorm(out_ff_dim, n_clusters))
+
         dictionary_size = n_heros
         self.hero_embeddings = torch.nn.Embedding(dictionary_size, embedding_dim, padding_idx=int(mask_idx))
         self.pe = PositionalEncoding(embedding_dim, 0, max_len=25)
@@ -498,6 +526,7 @@ class DraftBert(torch.nn.Module):
                     win_batch = win_batch.cuda()
 
                 out = self.forward(src_batch)  # -> shape (batch_size, sequence_length, embedding_dim)
+                # TODO: This is bad and I should feel bad - this needs to be draft order not just left to right
                 to_predict = (src_batch == self.mask_idx).int().detach().cpu().numpy().argmax(-1)
                 to_predict = out[range(len(out)), to_predict]
                 mask_pred = self.get_masked_output(to_predict)
