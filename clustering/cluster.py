@@ -30,7 +30,7 @@ def generate_class_clustering(nodes, algorithm, reduction):
 	# data = [[int(role in comps[i]) for role in classes] for i in range(len(comps))]
 	comps = [(roles[i][0] + roles[i][1] + roles[i][2] + roles[i][3] + roles[i][4]) for i in range(len(roles))]
 	data = np.array([[comps[i].count(role) for role in classes] for i in range(len(comps))])
-	data /= np.sum(data, axis = 1).reshape(-1,1)
+	data = data / np.sum(data, axis = 1).reshape(-1,1)
 	X = pd.DataFrame(data, columns = classes)
 	kmeans = KMeans(n_clusters = 8, random_state = 0).fit(X)
 
@@ -48,6 +48,22 @@ def generate_class_clustering(nodes, algorithm, reduction):
 		for i in range(len(colors)):
 			tmp = X_tight[y == i]
 			ax.scatter(tmp[:,:1], tmp[:,1:2], c = colors[i])
+
+		plt.xticks([]), plt.yticks([])
+		plt.show()
+
+	if reduction == 'tsne_3':
+		X_tsne = TSNE(n_components=3, random_state=0).fit_transform(X)
+		x_min, x_max = np.min(X_tsne, 0), np.max(X_tsne, 0)
+		X_tight = (X_tsne - x_min) / (x_max - x_min)
+
+		colors = np.random.choice(list(CSS4_COLORS.keys()), len(np.unique(y)))
+
+		fig = plt.figure()
+		ax = fig.add_subplot(111, projection='3d')
+		for i in range(len(colors)):
+			tmp = X_tight[y == i]
+			ax.scatter(tmp[:,:1], tmp[:,1:2], tmp[:,2:3], c = colors[i])
 
 		plt.xticks([]), plt.yticks([])
 		plt.show()
