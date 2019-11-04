@@ -48,7 +48,6 @@ class CaptainsModeDataset(Dataset):
         self.CLS = cls
         self.MASK = int(mask)
 
-
         self.draft_order = np.array([1, 13, 2, 14, 3, 15,
                                      4, 16, 5, 17,
                                      6, 18, 7, 19,
@@ -110,6 +109,8 @@ class CaptainsModeDataset(Dataset):
                        np.ones((22, 1)) * self.SEP))
         mask = np.zeros_like(m)
         mask[np.arange(len(mask)), self.draft_order] = 1
+        for i in range(len(mask)):
+            mask[i, self.draft_order[i:]] = 1
         # mask = subsequent_mask(23).squeeze()
         # mask = mask[:-1, 1:]
         # _m = m[:, self.mask_idxs]

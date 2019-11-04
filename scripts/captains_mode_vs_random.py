@@ -83,26 +83,29 @@ def do_rollout(model, hero_ids, port, verbose=False):
 
 
 if __name__ == '__main__':
-    model: DraftBert = load('../weights/final_weights/draft_bert_pretrain_captains_mode.torch',
-                                  map_location=device('cpu'))
+    model: DraftBert = load('../weights/final_weights/draft_bert_pretrain_captains_mode_2.torch',
+                            map_location=device('cpu'))
     model.eval()
     model.requires_grad = False
-
     memory_size = 500000
     n_jobs = 4
-    n_games = 4
+    n_games = 80
     port = 13337
     verbose = True
     hero_ids = pd.read_json('../const/draft_bert_hero_ids.json', orient='records')
 
     memory = deque(maxlen=memory_size)
     f = partial(do_rollout, model, hero_ids)
-    start = time.time()
+
     for batch_of_games in range(n_games // n_jobs):
-        # pool = ProcessPoolExecutor(2)
+        start = time.time()
+
+        start_batch = time.time()
         with Pool(n_jobs) as pool:
             results = pool.map_async(f, [port + i for i in range(n_jobs)]).get()
             memory.extend(results)
+        end = time.time()
+        print(f'Finished batch {batch_of_games} in {end - start}s')
 
     with open('../data/self_play/captains_mode_vs_random_memory_2.pickle', 'wb') as f:
         pickle.dump(memory, f)

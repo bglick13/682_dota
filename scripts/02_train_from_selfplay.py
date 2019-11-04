@@ -25,4 +25,5 @@ def run(memory_file, ):
     with open(memory_file, 'rb') as f:
         mem = pickle.load(f)
 
+    # TODO: I think we can probably convert this to the captiansmodepretrain dataset format and reuse a bunch of code
     states, actions, values = reconcile_memory(mem)
