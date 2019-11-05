@@ -72,8 +72,8 @@ def do_rollout(model, hero_ids, port, verbose=False):
     all_states.append(state.game_state)
 
     # TODO: I'm really not confident this is right - it's worth double and triple checking
-    all_values = [value] * 22
-    all_agent_pick_first = [player.pick_first] * 22
+    all_values = [value] * 23
+    all_agent_pick_first = [player.pick_first] * 23
     # all_values[[0, 2, 4, 6, 9, 11, 13, 15, 17, 19, 20]] = value
     # all_values[[1, 3, 5, 7, 8, 10, 12, 14, 16, 18, 21]] = 1 - value
     del model
@@ -89,7 +89,7 @@ if __name__ == '__main__':
     model.requires_grad = False
     memory_size = 500000
     n_jobs = 4
-    n_games = 80
+    n_games = 100
     port = 13337
     verbose = True
     hero_ids = pd.read_json('../const/draft_bert_hero_ids.json', orient='records')

@@ -229,38 +229,36 @@ class DraftState(ABC):
         radiant_progress = 0
         dire_progress = 0
 
-        win_check_1 = None
-        win_check_2 = None
-        win_check_3 = None
-        win_check_4 = None
-        win_check_5 = None
-        win_check_6 = None
-        # while container in client.containers.list():
-        #     pass
+        # win_check_1 = None
+        # win_check_2 = None
+        # win_check_3 = None
+        # win_check_4 = None
+        # win_check_5 = None
+        # win_check_6 = None
+
         try:
-            with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
-                f.write("\nStarting new game.")
+            # with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
+            #     f.write("\nStarting new game.")
             with open(log_file_path, 'r') as f:
-                # buffer = f.read()
-                # if 'goodguys_fort destroyed' in buffer:
-                #     return 0
-                # elif 'badguys_fort destroyed' in buffer:
-                #     return 1
+
                 print(f'Opened file: {log_file_path}')
                 while True:
                     tmp_time = time.time()
-                    if tmp_time - start > cutoff_1 and win_check_1 is None:
-                        win_check_1 = (radiant_progress > dire_progress)
-                    if tmp_time - start > cutoff_2 and win_check_2 is None:
-                        win_check_2 = (radiant_progress > dire_progress)
-                    if tmp_time - start > cutoff_3 and win_check_3 is None:
-                        win_check_3 = (radiant_progress > dire_progress)
-                    if tmp_time - start > cutoff_4 and win_check_4 is None:
-                        win_check_4 = (radiant_progress > dire_progress)
-                    if tmp_time - start > cutoff_5 and win_check_5 is None:
-                        win_check_5 = (radiant_progress > dire_progress)
-                    if tmp_time - start > cutoff_6 and win_check_6 is None:
-                        win_check_6 = (radiant_progress > dire_progress)
+                    # if tmp_time - start > cutoff_6:
+                    #     win = (radiant_progress > dire_progress)
+                    #     break
+                    # if (tmp_time - start) > cutoff_1 and win_check_1 is None:
+                    #     win_check_1 = (radiant_progress > dire_progress)
+                    # if (tmp_time - start) > cutoff_2 and win_check_2 is None:
+                    #     win_check_2 = (radiant_progress > dire_progress)
+                    # if (tmp_time - start) > cutoff_3 and win_check_3 is None:
+                    #     win_check_3 = (radiant_progress > dire_progress)
+                    # if (tmp_time - start) > cutoff_4 and win_check_4 is None:
+                    #     win_check_4 = (radiant_progress > dire_progress)
+                    # if (tmp_time - start) > cutoff_5 and win_check_5 is None:
+                    #     win_check_5 = (radiant_progress > dire_progress)
+                    # if (tmp_time - start) > cutoff_6 and win_check_6 is None:
+                    #     win_check_6 = (radiant_progress > dire_progress)
                     where = f.tell()
                     line = f.readline()
                     if not line:
@@ -276,52 +274,38 @@ class DraftState(ABC):
 
                             if 'npc_dota_badguys_fort destroyed' in line:
                                 print(f'{game_id} : Radiant Victory')
-                                if win_check_1 is not None:
-                                    with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
-                                        f.write("1 min check is " + str(win_check_1 == True))
-                                if win_check_2 is not None:
-                                    with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
-                                        f.write("2 min check is " + str(win_check_2 == True))
-                                if win_check_3 is not None:
-                                    with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
-                                        f.write("3 min check is " + str(win_check_3 == True))
-                                if win_check_4 is not None:
-                                    with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
-                                        f.write("4 min check is " + str(win_check_4 == True))
-                                if win_check_5 is not None:
-                                    with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
-                                        f.write("5 min check is " + str(win_check_5 == True))
-                                if win_check_6 is not None:
-                                    with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
-                                        f.write("6 min check is " + str(win_check_6 == True))
-
-                                return 1
+                                win = 1
+                                break
                             elif 'npc_dota_goodguys_fort destroyed' in line:
                                 print(f'{game_id} : Dire Victory')
-                                if win_check_1 is not None:
-                                    with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
-                                        f.write("1 min check is " + str(win_check_1 == False))
-                                if win_check_2 is not None:
-                                    with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
-                                        f.write("2 min check is " + str(win_check_2 == False))
-                                if win_check_3 is not None:
-                                    with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
-                                        f.write("3 min check is " + str(win_check_3 == False))
-                                if win_check_4 is not None:
-                                    with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
-                                        f.write("4 min check is " + str(win_check_4 == False))
-                                if win_check_5 is not None:
-                                    with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
-                                        f.write("5 min check is " + str(win_check_5 == False))
-                                if win_check_6 is not None:
-                                    with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
-                                        f.write("6 min check is " + str(win_check_6 == False))
-
-                                return 0
+                                win = 0
+                                break
         except FileNotFoundError as e:
+            win = -1
             logger.error(e)
 
         client.close()
+        # if win >= 0:
+        #     if win_check_1 is not None:
+        #         with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
+        #             f.write(f"1 min check is {win_check_1 == bool(win)}\n")
+        #     if win_check_2 is not None:
+        #         with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
+        #             f.write(f"2 min check is {win_check_2 == bool(win)}\n")
+        #     if win_check_3 is not None:
+        #         with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
+        #             f.write(f"3 min check is {win_check_3 == bool(win)}\n")
+        #     if win_check_4 is not None:
+        #         with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
+        #             f.write(f"4 min check is {win_check_4 == bool(win)}\n")
+        #     if win_check_5 is not None:
+        #         with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
+        #             f.write(f"5 min check is {win_check_5 == bool(win)}\n")
+        #     if win_check_6 is not None:
+        #         with open('tmp_log_file_for_win_check_test.txt', 'a+') as f:
+        #             f.write(f"6 min check is {win_check_6 == bool(win)}\n")
+
+        return win
 
     def __str__(self):
         radiant = self.heros.loc[self.heros['model_id'].isin(self.radiant), 'localized_name']

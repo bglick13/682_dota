@@ -76,8 +76,8 @@ def do_rollout(model, hero_ids, port, verbose=False):
     all_states.append(state.game_state)
 
     # TODO: I'm really not confident this is right - it's worth double and triple checking
-    all_values = [value] * 22
-    all_agent_pick_first = [player.pick_first] * 22
+    all_values = [value] * 23
+    all_agent_pick_first = [player.pick_first] * 23
     # all_values[[0, 2, 4, 6, 9, 11, 13, 15, 17, 19, 20]] = value
     # all_values[[1, 3, 5, 7, 8, 10, 12, 14, 16, 18, 21]] = 1 - value
     del model

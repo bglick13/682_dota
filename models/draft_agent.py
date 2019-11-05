@@ -107,6 +107,9 @@ class DraftAgent(DummyAgent):
         else:
             state = leaf
         s = state.state
+        s[0] = self.model.cls
+        s[12] = self.model.sep
+        s[-1] = self.model.sep
         s_in = LongTensor([s])
         s_in.requires_grad = False
         # if torch.cuda.is_available():

@@ -52,12 +52,12 @@ def do_rollout(model, hero_ids, port, verbose=False):
         elif done:
             print('Done but no victory')
             break
-        turn += 1
+
     all_actions.append(action)
     all_states.append(state.game_state)
 
     # TODO: I'm really not confident this is right - it's worth double and triple checking
-    all_values = [value] * 22
+    all_values = [value] * 23
     del model
     empty_cache()
     return dict(all_actions=all_actions, all_states=all_states, all_values=all_values)
@@ -70,7 +70,7 @@ if __name__ == '__main__':
     model.requires_grad = False
     memory_size = 500000
     n_jobs = 4
-    n_games = 400
+    n_games = 100
     port = 13337
     verbose = True
     hero_ids = pd.read_json('../const/draft_bert_hero_ids.json', orient='records')

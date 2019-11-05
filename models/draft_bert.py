@@ -32,10 +32,66 @@ def subsequent_mask(size):
 #  random masking it's sequential. And we'll obviously need to create a clustering object first to generate the
 #  labels"""
 
+class SelfPlayDataset(Dataset):
+    def __init__(self, memory, test_pct=0):
+        self.test_pct = test_pct
+        draft_order = np.array([1, 13, 2, 14, 3, 15,
+                                4, 16, 5, 17,
+                                6, 18, 7, 19,
+                                8, 20, 9, 21,
+                                10, 22,
+                                11, 23])
+        draft_order -= 1
+
+        all_outcomes = []
+        all_actions = []
+        all_states = []
+        all_picks = []
+        for i, m in enumerate(memory):
+            v = m['all_values']
+            # Skip games that failed to load and properly record data
+            if v[0] == -1:
+                continue
+            s = m['all_states']
+            a = m['all_actions']
+            _a = []
+            p = []
+
+            for pick in draft_order:
+                p.append(pick)
+                _a.append(a[pick])
+            all_outcomes.extend(v[:-1])
+            all_actions.extend(_a)
+            all_states.extend(s[:-1])
+            all_picks.extend(p)
+        self.states = np.array(all_states)
+        self.actions = np.array(all_actions)
+        self.outcomes = np.array(all_outcomes)
+        self.pick_indices = np.array(all_picks)
+
+        if self.test_pct > 0:
+            self.test_idxs = np.random.choice(range(len(self.states)), int(len(self.states) * self.test_pct),
+                                              replace=False)
+            self.train_idxs = np.array(list(set(range(len(self.states))) - set(self.test_idxs)))
+
+        else:
+            self.test_idxs = []
+            self.train_idxs = np.arange(len(self.states))
+        self.train = True
+
+    def __getitem__(self, item):
+        s = self.states[item]
+        a = self.actions[item]
+        v = self.outcomes[item]
+        to_predict = self.pick_indices[item]
+        return s, a, v, to_predict
+
+    def __len__(self):
+        return len(self.states)
 
 class CaptainsModeDataset(Dataset):
-    def __init__(self, df: Union[pd.DataFrame, str], hero_ids: pd.DataFrame, label_encoder: LabelEncoder,
-                 sep: int, cls: int, mask: int, test_pct: float = 0):
+    def __init__(self, df: Union[pd.DataFrame, str], hero_ids: pd.DataFrame, label_encoder: LabelEncoder=None,
+                 sep: int=None, cls: int=None, mask: int=None, test_pct: float = 0,):
         if isinstance(df, pd.DataFrame):
             df = df
         elif isinstance(df, str):
@@ -65,8 +121,9 @@ class CaptainsModeDataset(Dataset):
             second_pick_heros = grp['hero_id'].values[[1, 3, 5, 7, 8, 10, 12, 14, 16, 18, 21]]
 
             # Transform from Dota hero ids to model hero ids
-            first_pick_heros = self.le.transform(first_pick_heros)
-            second_pick_heros = self.le.transform(second_pick_heros)
+            if self.le is not None:
+                first_pick_heros = self.le.transform(first_pick_heros)
+                second_pick_heros = self.le.transform(second_pick_heros)
 
             heros = np.concatenate((#[self.CLS],  # Always start with the CLS token - index [0]
                                     # Radiant - starts at index 1
@@ -108,7 +165,6 @@ class CaptainsModeDataset(Dataset):
                        m[:, 12:],
                        np.ones((22, 1)) * self.SEP))
         mask = np.zeros_like(m)
-        mask[np.arange(len(mask)), self.draft_order] = 1
         for i in range(len(mask)):
             mask[i, self.draft_order[i:]] = 1
         # mask = subsequent_mask(23).squeeze()
@@ -117,7 +173,7 @@ class CaptainsModeDataset(Dataset):
         m[mask.astype(bool)] = int(self.MASK)
         m = torch.LongTensor(m)
 
-        return m, t, torch.LongTensor([self.wins[index]]).repeat(22)
+        return m, t, torch.LongTensor([self.wins[index]]).repeat(22), torch.LongTensor(self.draft_order)
 
     def __len__(self):
         if self.train:
@@ -496,6 +552,66 @@ class DraftBert(torch.nn.Module):
                         f'Matching Acc: {matching_acc}, Win Acc: {win_acc}')
             torch.save(self, f'../weights/checkpoints/draft_bert_pretrain__allpick_checkpoint_{epoch}.torch')
 
+    def train_from_selfplay(self, dataset: SelfPlayDataset, **train_kwargs):
+        self.train()
+        lr = train_kwargs.get('lr', 0.001)
+        batch_size = train_kwargs.get('batch_size', 512)
+        epochs = train_kwargs.get('epochs', 100)
+        print_iter = train_kwargs.get('print_iter', 100)
+
+        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4)
+        opt = torch.optim.Adam(self.parameters(), lr=lr)
+        next_hero_loss = torch.nn.CrossEntropyLoss(reduction='mean')
+        win_loss = torch.nn.CrossEntropyLoss(reduction='mean')
+        for epoch in tqdm(range(epochs)):
+            for i, batch in tqdm(enumerate(dataloader)):
+                opt.zero_grad()
+
+                state_batch = batch[0]
+                action_batch = batch[1]
+                win_batch = batch[2]
+                to_predict = batch[3]
+
+                state_batch = torch.LongTensor(state_batch.reshape(-1, 25).long())
+                action_batch = torch.LongTensor(action_batch.reshape(-1, 1).long())
+                win_batch = torch.LongTensor(win_batch.reshape(-1, 1).long())
+                to_predict = to_predict.reshape(-1, 1).long()
+
+                if cuda:
+                    state_batch = state_batch.cuda()
+                    action_batch = action_batch.cuda()
+                    win_batch = win_batch.cuda()
+
+                out = self.forward(state_batch)  # -> shape (batch_size, sequence_length, embedding_dim)
+                # TODO: This is bad and I should feel bad - this needs to be draft order not just left to right
+                # to_predict = (src_batch == self.mask_idx).int().detach().cpu().numpy().argmax(-1)
+                to_predict = out[range(len(out)), to_predict.squeeze()]
+                mask_pred = self.get_masked_output(to_predict)
+
+                mask_batch_loss = next_hero_loss(mask_pred, action_batch.squeeze())
+
+                win_pred = self.get_win_output(out[:, 0, :])
+                batch_win_loss = win_loss(win_pred, win_batch.squeeze())
+
+                batch_loss = (mask_batch_loss + batch_win_loss) / 2.
+                batch_loss.backward()
+                opt.step()
+
+                if i == 0 or (i + 1) % print_iter == 0:
+                    batch_acc = (
+                            mask_pred.detach().cpu().numpy().argmax(1) == action_batch.detach().cpu().numpy()).astype(
+                        int).mean()
+                    top_5_pred = np.argsort(mask_pred.detach().cpu().numpy(), axis=1)[:, -5:]
+                    top_5_acc = np.array(
+                        [t in p for t, p in zip(action_batch.detach().cpu().numpy(), top_5_pred)]).astype(int).mean()
+
+                    win_acc = (win_pred.detach().cpu().numpy().argmax(
+                        1) == win_batch.squeeze().detach().cpu().numpy()).astype(int).mean()
+
+                    print(
+                        f'Epoch: {epoch}, Step: {i}, Loss: {batch_loss}, Acc: {batch_acc}, Top 5 Acc: {top_5_acc}, Win Acc: {win_acc}')
+            torch.save(self, f'../weights/checkpoints/draft_bert_selfplay_checkpoint_{epoch}.torch')
+
     def pretrain_captains_mode(self, dataset: CaptainsModeDataset, **train_kwargs):
         self.train()
         lr = train_kwargs.get('lr', 0.001)
@@ -515,10 +631,12 @@ class DraftBert(torch.nn.Module):
                 src_batch = batch[0]
                 tgt_batch = batch[1]
                 win_batch = batch[2]
+                to_predict = batch[3]
 
                 src_batch = src_batch.reshape(-1, 25)
                 tgt_batch = tgt_batch.reshape(-1, 1)
                 win_batch = win_batch.reshape(-1, 1)
+                to_predict = to_predict.reshape(-1, 1)
 
                 if cuda:
                     src_batch = src_batch.cuda()
@@ -527,8 +645,8 @@ class DraftBert(torch.nn.Module):
 
                 out = self.forward(src_batch)  # -> shape (batch_size, sequence_length, embedding_dim)
                 # TODO: This is bad and I should feel bad - this needs to be draft order not just left to right
-                to_predict = (src_batch == self.mask_idx).int().detach().cpu().numpy().argmax(-1)
-                to_predict = out[range(len(out)), to_predict]
+                # to_predict = (src_batch == self.mask_idx).int().detach().cpu().numpy().argmax(-1)
+                to_predict = out[range(len(out)), to_predict.squeeze()]
                 mask_pred = self.get_masked_output(to_predict)
 
                 mask_batch_loss = next_hero_loss(mask_pred, tgt_batch.squeeze())
