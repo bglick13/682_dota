@@ -1,3 +1,6 @@
+import os, sys
+sys.path.append('..')
+
 import pickle
 import time
 import docker
@@ -70,7 +73,7 @@ if __name__ == '__main__':
     model.requires_grad = False
     memory_size = 500000
     n_jobs = 4
-    n_games = 100
+    n_games = 1000
     port = 13337
     verbose = True
     hero_ids = pd.read_json('../const/draft_bert_hero_ids.json', orient='records')
