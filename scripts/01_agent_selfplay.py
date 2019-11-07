@@ -35,10 +35,10 @@ def do_rollout(model, hero_ids, port, verbose=False):
             raise IndexError
 
         if npi < 13:
-            action, mcts_value, p, nn_value = player1.act(state, action, num_reads=1500)
+            action, mcts_value, p, nn_value = player1.act(state, action, num_reads=500)
             player1_values.append(nn_value)
         else:
-            action, mcts_value, p, nn_value = player2.act(state, action, num_reads=1500)
+            action, mcts_value, p, nn_value = player2.act(state, action, num_reads=500)
             player2_values.append(nn_value)
 
         all_states.append(state.game_state)
@@ -75,8 +75,8 @@ if __name__ == '__main__':
     model.eval()
     model.requires_grad = False
     memory_size = 500000
-    n_jobs = 4
-    n_games = 4
+    n_jobs = 1
+    n_games = 1
     port = 13337
     verbose = True
     hero_ids = pd.read_json('../const/draft_bert_hero_ids.json', orient='records')

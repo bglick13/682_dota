@@ -137,7 +137,9 @@ class DraftState(ABC):
 
     @property
     def get_legal_moves(self):
-        return np.array(list((set(self.heros.loc[~self.heros['name'].isin(['MASK', 'SEP', 'CLS']), 'model_id'].values) -
+        # return np.array(list((set(self.heros.loc[~self.heros['name'].isin(['MASK', 'SEP', 'CLS']), 'model_id'].values) -
+        #                       set(self.game_state))))
+        return np.array(list((set(self.heros['model_id'].values) -
                               set(self.game_state))))
 
     def pick(self, hero_id):
@@ -156,15 +158,17 @@ class DraftState(ABC):
         radiant_dota_ids = self.heros.loc[self.heros['model_id'].isin(self.radiant), 'id'].values
         dire_dota_ids = self.heros.loc[self.heros['model_id'].isin(self.dire), 'id'].values
         hero_picks = []
+        print(radiant_dota_ids)
+        print(dire_dota_ids)
         try:
             for hero in radiant_dota_ids:
                 hero_picks.append(HeroPick(team_id=TEAM_RADIANT, hero_id=hero, control_mode=HERO_CONTROL_MODE_DEFAULT))
             for hero in dire_dota_ids:
                 hero_picks.append(HeroPick(team_id=TEAM_DIRE, hero_id=hero, control_mode=HERO_CONTROL_MODE_DEFAULT))
         except ValueError as e:
-            logger.debug(e)
-            logger.debug(f'Radiant dota ids : {radiant_dota_ids}\Radiant model ids: {self.radiant}')
-            logger.debug(f'Dire dota ids : {dire_dota_ids}\Dire model ids: {self.dire}')
+            print(e)
+            print(f'Radiant dota ids : {radiant_dota_ids}\Radiant model ids: {self.radiant}')
+            print(f'Dire dota ids : {dire_dota_ids}\Dire model ids: {self.dire}')
 
         # TODO generate game_id here so it's easily accessible
         return GameConfig(
