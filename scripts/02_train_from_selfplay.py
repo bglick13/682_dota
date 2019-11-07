@@ -39,18 +39,23 @@ def reconcile_memory(memory, mask_idx):
 
 
 def run(memory_file, ):
-    EPOCHS = 10
-    BATCH_SIZE = 64
+    BATCH_SIZE = 128
+    N_STEPS = 1000
+
     mems = []
     for mem in os.listdir(memory_file):
-        with open(os.path.join(memory_file, mem), 'rb') as f:
-            mem = pickle.load(f)
-        mems.append(mem)
+        if mem.endswith('pickle'):
+            with open(os.path.join(memory_file, mem), 'rb') as f:
+                mem = pickle.load(f)
+            mems.append(mem)
 
     model: DraftBert = load('../weights/final_weights/draft_bert_pretrain_captains_mode_2.torch',
                             map_location=device('cpu'))
 
     dataset = SelfPlayDataset(*mems)
+    total_points_sampled = BATCH_SIZE * N_STEPS
+    EPOCHS = total_points_sampled // len(dataset)
+    print(f'Dataset size: {len(dataset)}, Epochs: {EPOCHS}')
     model.cuda()
     model.train()
     model.train_from_selfplay(dataset, epochs=EPOCHS, batch_size=BATCH_SIZE)

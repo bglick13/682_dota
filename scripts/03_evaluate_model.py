@@ -77,11 +77,12 @@ def do_rollout(old_model, new_model, hero_ids, port, verbose=False):
 
     # TODO: I'm really not confident this is right - it's worth double and triple checking
     all_values = [value] * 23
+    player_1_pick_first = [player_1_pick_first] * 23
     del old_model
     del new_model
     empty_cache()
     return dict(all_actions=all_actions, all_states=all_states, all_values=all_values, player1_values=player1_values,
-                player2_values=player2_values)
+                player2_values=player2_values, player_1_pick_first=player_1_pick_first)
 
 
 if __name__ == '__main__':

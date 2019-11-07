@@ -35,10 +35,10 @@ def do_rollout(model, hero_ids, port, verbose=False):
             raise IndexError
 
         if npi < 13:
-            action, mcts_value, p, nn_value = player1.act(state, action, num_reads=100)
+            action, mcts_value, p, nn_value = player1.act(state, action, num_reads=1500)
             player1_values.append(nn_value)
         else:
-            action, mcts_value, p, nn_value = player2.act(state, action, num_reads=100)
+            action, mcts_value, p, nn_value = player2.act(state, action, num_reads=1500)
             player2_values.append(nn_value)
 
         all_states.append(state.game_state)
@@ -67,7 +67,7 @@ def do_rollout(model, hero_ids, port, verbose=False):
 
 
 if __name__ == '__main__':
-    file_name = 'cm2_value_introspection'
+    file_name = None
     if file_name is None:
         file_name = f'selfplay_{time.time()}'
     model: DraftBert = load('../weights/final_weights/draft_bert_pretrain_captains_mode_2.torch',
