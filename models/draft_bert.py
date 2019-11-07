@@ -33,7 +33,7 @@ def subsequent_mask(size):
 #  labels"""
 
 class SelfPlayDataset(Dataset):
-    def __init__(self, memory, test_pct=0):
+    def __init__(self, *memories, test_pct=0):
         self.test_pct = test_pct
         draft_order = np.array([1, 13, 2, 14, 3, 15,
                                 4, 16, 5, 17,
@@ -47,23 +47,24 @@ class SelfPlayDataset(Dataset):
         all_actions = []
         all_states = []
         all_picks = []
-        for i, m in enumerate(memory):
-            v = m['all_values']
-            # Skip games that failed to load and properly record data
-            if v[0] == -1:
-                continue
-            s = m['all_states']
-            a = m['all_actions']
-            _a = []
-            p = []
+        for memory in memories:
+            for i, m in enumerate(memory):
+                v = m['all_values']
+                # Skip games that failed to load and properly record data
+                if v[0] == -1:
+                    continue
+                s = m['all_states']
+                a = m['all_actions']
+                _a = []
+                p = []
 
-            for pick in draft_order:
-                p.append(pick)
-                _a.append(a[pick])
-            all_outcomes.extend(v[:-1])
-            all_actions.extend(_a)
-            all_states.extend(s[:-1])
-            all_picks.extend(p)
+                for pick in draft_order:
+                    p.append(pick)
+                    _a.append(a[pick])
+                all_outcomes.extend(v[:-1])
+                all_actions.extend(_a)
+                all_states.extend(s[:-1])
+                all_picks.extend(p)
         self.states = np.array(all_states)
         self.actions = np.array(all_actions)
         self.outcomes = np.array(all_outcomes)

@@ -14,3 +14,5 @@ secret.py
 *.pickle
 
 \.DS_Store
+
+*.png
