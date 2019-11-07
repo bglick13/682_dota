@@ -93,8 +93,8 @@ if __name__ == '__main__':
     model.requires_grad = False
 
     memory_size = 500000
-    n_jobs = 1
-    n_games = 1
+    n_jobs = 4
+    n_games = 100
     port = 13337
     verbose = True
     hero_ids = pd.read_json('../const/draft_bert_hero_ids.json', orient='records')
@@ -103,20 +103,14 @@ if __name__ == '__main__':
     f = partial(do_rollout, model, hero_ids)
 
     times = []
-    cpu_assignments = dict((f'{job_number*2}-{job_number*2+1}', None) for job_number in range(n_jobs))
-    jobs_assigned = 0
-    # while jobs_assigned < n_games:
-    #     for cpu in cpu_assignments.keys():
-    #         if cpu_assignments[cpu] is None:
-    #             p = Process(target=f)
     start = time.time()
-    for i in range(100):
-        for batch_of_games in range(n_games // n_jobs):
-            start_batch = time.time()
-            with Pool(n_jobs) as pool:
-                results = pool.map_async(f, [port + i for i in range(n_jobs)]).get()
-                memory.extend(results)
-            times.append(time.time() - start_batch)
+
+    for batch_of_games in range(n_games // n_jobs):
+        start_batch = time.time()
+        with Pool(n_jobs) as pool:
+            results = pool.map_async(f, [port + i for i in range(n_jobs)]).get()
+            memory.extend(results)
+        times.append(time.time() - start_batch)
     end = time.time()
     with open('../data/self_play/allpick_vs_random_memory.pickle', 'wb') as f:
         pickle.dump(memory, f)

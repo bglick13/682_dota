@@ -1,8 +1,10 @@
-import numpy as np
-import pandas as pd
+import os
 import pickle
+
+import numpy as np
+from torch import load, device, save
+
 from models.draft_bert import DraftBert, SelfPlayDataset
-from torch import load, device
 
 
 def reconcile_memory(memory, mask_idx):
@@ -37,22 +39,28 @@ def reconcile_memory(memory, mask_idx):
 
 
 def run(memory_file, ):
-    EPOCHS = 10
-    BATCH_SIZE = 64
+    BATCH_SIZE = 128
+    N_STEPS = 1000
 
-    with open(memory_file, 'rb') as f:
-        mem = pickle.load(f)
+    mems = []
+    for mem in os.listdir(memory_file):
+        if mem.endswith('pickle'):
+            with open(os.path.join(memory_file, mem), 'rb') as f:
+                mem = pickle.load(f)
+            mems.append(mem)
 
-    # TODO: I think we can probably convert this to the captiansmodepretrain dataset format and reuse a bunch of code
     model: DraftBert = load('../weights/final_weights/draft_bert_pretrain_captains_mode_2.torch',
                             map_location=device('cpu'))
-    # states, actions, values, ids, teams = reconcile_memory(mem, model.mask_idx)
-    # df = pd.DataFrame(dict(match_seq_num=ids, hero_id=actions, radiant_win=values, team=teams))
-    dataset = SelfPlayDataset(mem)
+
+    dataset = SelfPlayDataset(*mems)
+    total_points_sampled = BATCH_SIZE * N_STEPS
+    EPOCHS = total_points_sampled // len(dataset)
+    print(f'Dataset size: {len(dataset)}, Epochs: {EPOCHS}')
     model.cuda()
     model.train()
-    model.train_from_selfplay(dataset, epochs=10)
+    model.train_from_selfplay(dataset, epochs=EPOCHS, batch_size=BATCH_SIZE)
+    save(model, os.path.join(memory_file, 'new_model.torch'))
 
 
 if __name__ == '__main__':
-    run('../data/self_play/selfplay_1572991709.5282474.pickle')
+    run('../data/self_play/memories_for_train_1')
