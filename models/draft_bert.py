@@ -1,14 +1,20 @@
-import torch
-from torch.functional import F
-from torch.utils.data import Dataset, DataLoader
+import copy
+import warnings
 from enum import Enum
+from typing import Union
+
+import networkx as nx
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
-import networkx as nx
+import torch
 from sklearn.preprocessing import LabelEncoder
-from typing import Union
-import copy
+from torch.functional import F
+from torch.utils.data import Dataset, DataLoader
+from tqdm import tqdm
+
+from clustering.kmeans_cluster import KmeansCluster
+
+warnings.filterwarnings("ignore")
 
 
 pd.set_option('display.max_rows', 200)
@@ -184,7 +190,8 @@ class CaptainsModeDataset(Dataset):
 
 
 class AllPickDataset(Dataset):
-    def __init__(self, g: Union[nx.Graph, str], hero_ids: pd.DataFrame, test_pct: float = 0, mask_pct=0.1):
+    def __init__(self, g: Union[nx.Graph, str], hero_ids: pd.DataFrame, test_pct: float = 0, mask_pct=0.1,
+                 clusterizer: KmeansCluster = None):
         if isinstance(g, nx.Graph):
             g = g
         elif isinstance(g, str):
@@ -202,6 +209,7 @@ class AllPickDataset(Dataset):
         self.hero_ids['model_id'] = self.le.fit_transform(self.hero_ids['id'])
         self.test_pct = test_pct
         self.mask_pct = mask_pct
+        self.clusterizer = clusterizer
 
         self.MASK = self.hero_ids.loc[self.hero_ids['id'] == -1, 'model_id'].values[0]
         self.SEP = self.hero_ids.loc[self.hero_ids['id'] == -2, 'model_id'].values[0]
@@ -298,12 +306,21 @@ class AllPickDataset(Dataset):
         m = self.matchups[index]
         r = np.random.permutation(m[[4, 5, 8, 9, 11]])
         d = np.random.permutation(m[[16, 17, 20, 21, 23]])
+
+        if self.clusterizer is not None:
+            r_cluster = self.clusterizer.predict([self.le.inverse_transform(r.astype(int))])[0]
+            d_cluster = self.clusterizer.predict([self.le.inverse_transform(d.astype(int))])[0]
+        else:
+            r_cluster = None
+            d_cluster = None
+
         m[[4, 5, 8, 9, 11]] = r
         m[[16, 17, 20, 21, 23]] = d
 
         return (torch.LongTensor(m),
                 torch.LongTensor([self.wins[index]]),
-                mask)
+                mask,
+                torch.LongTensor([r_cluster, d_cluster]))
 
     def __len__(self):
         if self.train:
@@ -407,7 +424,7 @@ class DraftBert(torch.nn.Module):
 
     def get_cluster_predictions(self, src, mask):
         if mask is not None:
-            src[mask] = torch.LongTensor([self.mask_idx] * src.shape[0])
+            src[mask] = self.mask_idx
         first_to_pick_embeddings = src[:, [4, 5, 8, 9, 11], :].sum(1)
         second_to_pick_embeddings = src[:, [16, 17, 20, 21, 23], :].sum(1)
 
@@ -416,7 +433,9 @@ class DraftBert(torch.nn.Module):
 
         first_to_pick_cluster = self.cluster_out(first_to_pick_hidden)
         second_to_pick_cluster = self.cluster_out(second_to_pick_hidden)
-        return first_to_pick_cluster, second_to_pick_cluster, [first_to_pick_hidden, second_to_pick_hidden]
+        return (first_to_pick_cluster, second_to_pick_cluster,
+                torch.cat([first_to_pick_hidden, second_to_pick_hidden]).view(2, first_to_pick_hidden.shape[0],
+                                                                              first_to_pick_hidden.shape[1]))
 
     def embed_lineup(self, lineup):
         if isinstance(lineup, (list, np.ndarray)):
@@ -438,7 +457,7 @@ class DraftBert(torch.nn.Module):
 
         # First, we encode the src sequence into the latent hero representation
         if mask is not None:
-            src[mask] = torch.LongTensor([self.mask_idx] * src.shape[0])
+            src[mask] = self.mask_idx
         # if cuda:
         #     src = src.cuda()  # Set the masked values to the embedding pad idx
         src = self.hero_embeddings(src)
@@ -523,11 +542,14 @@ class DraftBert(torch.nn.Module):
 
                 out = self.forward(src_batch, mask_batch)  # -> shape (batch_size, sequence_length, embedding_dim)
                 if self.n_clusters is not None:
-                    cluster_out = self.get_cluster_predictions(src_batch, mask_batch)
+                    cluster_out = self.get_cluster_predictions(out, mask_batch)
 
                 to_predict = out[mask_batch]
                 if self.n_clusters is not None:
                     picking_team = mask_batch.argmax(-1) > 12
+                    _pt = torch.zeros((1024, 2))
+                    _pt[range(batch_size), picking_team.long()] = 1
+                    picking_team = _pt
                     friendly_cluster_hs = cluster_out[2][picking_team, :]
                     opponent_cluster_hs = cluster_out[2][1-picking_team, :]
                 else:

@@ -17,10 +17,12 @@ if __name__ == '__main__':
                   'R_Pick', 'D_Pick']
 
     hero_ids = pd.read_json('../const/hero_ids.json', orient='records')
+    with open('../weights/kmeans.pickle', 'rb') as f:
+        clusterizer = pickle.load(f)
     # hero_ids = hero_ids.set_index('id')
     file_name = '../tmp/test_matchups_3135389989.pkl'
-    if os.path.isfile('all_pick_dataset.pickle'):
-        with open('all_pick_dataset.pickle', 'rb') as f:
+    if os.path.isfile('../data/all_pick_dataset.pickle'):
+        with open('../data/all_pick_dataset.pickle', 'rb') as f:
             dataset: AllPickDataset = pickle.load(f)
     else:
         dataset = AllPickDataset(file_name, hero_ids, mask_pct=.1, test_pct=.15)
@@ -28,10 +30,12 @@ if __name__ == '__main__':
             pickle.dump(dataset, f)
 
     dataset.hero_ids.to_json('../const/draft_bert_hero_ids.json')
+    dataset.clusterizer = clusterizer
 
     mask_idx = dataset.MASK
     model: DraftBert = DraftBert(embedding_dim=256, n_head=4, n_encoder_layers=4, ff_dim=256,
-                                 n_heros=len(dataset.hero_ids), out_ff_dim=128, mask_idx=mask_idx)
+                                 n_heros=len(dataset.hero_ids), out_ff_dim=128, mask_idx=mask_idx,
+                                 n_clusters=clusterizer.centroids)
 
     model.next_hero_output.requires_grad = False  # Can't train next hero prediction since all pick data isn't ordered
 
