@@ -3,6 +3,7 @@ sys.path.append('..')
 
 import pickle
 import time
+import cProfile
 from collections import deque
 from functools import partial
 from multiprocessing import Pool
@@ -38,10 +39,10 @@ def do_rollout(model, hero_ids, port, verbose=False):
             raise IndexError
 
         if npi < 13:
-            action, mcts_value, p, nn_value = player1.act(state, action, num_reads=1500)
+            action, mcts_value, p, nn_value = player1.act(state, action, num_reads=100)
             player1_values.append(nn_value)
         else:
-            action, mcts_value, p, nn_value = player2.act(state, action, num_reads=1500)
+            action, mcts_value, p, nn_value = player2.act(state, action, num_reads=100)
             player2_values.append(nn_value)
 
         all_states.append(state.game_state)
@@ -68,7 +69,6 @@ def do_rollout(model, hero_ids, port, verbose=False):
     return dict(all_actions=all_actions, all_states=all_states, all_values=all_values, player1_values=player1_values,
                 player2_values=player2_values)
 
-
 if __name__ == '__main__':
     file_name = None
     if file_name is None:
@@ -85,6 +85,7 @@ if __name__ == '__main__':
     hero_ids = pd.read_json('../const/draft_bert_hero_ids.json', orient='records')
 
     memory = deque(maxlen=memory_size)
+    # do_rollout(model, hero_ids, port)
     f = partial(do_rollout, model, hero_ids)
 
     for batch_of_games in range(n_games // n_jobs):
@@ -98,4 +99,3 @@ if __name__ == '__main__':
         print(f'Finished batch {batch_of_games} in {end-start}s')
     with open(f'../data/self_play/{file_name}.pickle', 'wb') as f:
         pickle.dump(memory, f)
-
