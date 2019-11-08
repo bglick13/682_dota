@@ -11,7 +11,7 @@ import numpy as np
 from sklearn.cluster import KMeans
 
 
-class kmeans_cluster(object):
+class KmeansCluster(object):
 	def __init__(self, centroids, train_data=None):
 		self.classes = ["Carry", "Support", "Nuker", "Disabler", "Jungler", "Durable", "Escape", "Pusher", "Initiator"]
 		self.hero_info = pd.DataFrame(data = json.load( open( os.path.join('..', 'const', 'hero_ids.json'), mode='rb')))
@@ -36,7 +36,7 @@ class kmeans_cluster(object):
 		
 		return X
 
-	def cluster(self, X, centroids=None):
+	def fit(self, X, centroids=None):
 		X = self.process_raw_data(X)
 
 		cluster = None
