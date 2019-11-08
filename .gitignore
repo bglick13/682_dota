@@ -14,3 +14,6 @@ secret.py
 *.pickle
 
 \.DS_Store
+
+*.png
+/rollout_results/

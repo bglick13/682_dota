@@ -1,22 +1,19 @@
-import os, sys, argparse, json
+import argparse
+import json
+import os
+import sys
+
 sys.path.append(os.path.abspath('..'))
 
 import pickle
 import pandas as pd
 import numpy as np
-import torch, umap
 
-from IPython import embed
-
-from sklearn import metrics
 from sklearn.cluster import DBSCAN, SpectralClustering, KMeans
 from sklearn.manifold import TSNE
-from sklearn.preprocessing import StandardScaler
 
-from matplotlib import cm, offsetbox
 from matplotlib import pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib.colors import ListedColormap, LinearSegmentedColormap, CSS4_COLORS
+from matplotlib.colors import CSS4_COLORS
 
 
 def generate_class_clustering(nodes, algorithm, reduction):
