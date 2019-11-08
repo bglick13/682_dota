@@ -12,7 +12,7 @@ from sklearn.cluster import KMeans
 
 
 class kmeans_cluster(object):
-	def __init__(self, centroids, train_data):
+	def __init__(self, centroids, train_data=None):
 		self.classes = ["Carry", "Support", "Nuker", "Disabler", "Jungler", "Durable", "Escape", "Pusher", "Initiator"]
 		self.hero_info = pd.DataFrame(data = json.load( open( os.path.join('..', 'const', 'hero_ids.json'), mode='rb')))
 		self.centroids=centroids
@@ -28,8 +28,7 @@ class kmeans_cluster(object):
 
 		Returns a pandas datafram object with the correct encoding
 		for clustering. Encoding is based on hero roles in each team. '''
-		nodes = pickle.load(input_X, encoding = 'bytes')
-		roles = [[self.hero_info[self.hero_info['id'] == id]['roles'].item() for id in node] for node in nodes]
+		roles = [[self.hero_info[self.hero_info['id'] == id]['roles'].item() for id in node] for node in input_X]
 		comps = [(roles[i][0] + roles[i][1] + roles[i][2] + roles[i][3] + roles[i][4]) for i in range(len(roles))]
 		data = np.array([[comps[i].count(role) for role in self.classes] for i in range(len(comps))])
 		data = data / np.sum(data, axis = 1).reshape(-1,1)
@@ -44,16 +43,14 @@ class kmeans_cluster(object):
 		if centroids is None:
 			cluster = KMeans(n_clusters=self.centroids, random_state=0)
 		else:
-			clsuter = KMeans(n_clusters=centroids, random_state=0)
+			cluster = KMeans(n_clusters=centroids, random_state=0)
 
 		cluster.fit(X)
 		return cluster
 
-
 	def set_cluster(self, cluster):
 		assert cluster is not None
 		self.cluster = cluster
-
 
 	def predict(self, x, cluster=None):
 		x = self.process_raw_data(x)
