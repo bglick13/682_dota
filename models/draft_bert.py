@@ -346,21 +346,23 @@ class Swish(torch.nn.Module):
 
 
 class DraftBert(torch.nn.Module):
-    def __init__(self, embedding_dim, ff_dim, n_head, n_encoder_layers, n_heros, out_ff_dim, mask_idx):
+    def __init__(self, embedding_dim, ff_dim, n_head, n_encoder_layers, n_heros, out_ff_dim, mask_idx, n_clusters=None):
         super().__init__()
         self.embedding_dim = embedding_dim
         self.n_head = n_head
         self.n_encoder_layers = n_encoder_layers
         self.n_heros = n_heros
+        self.n_clusters = n_clusters
 
         self.encoder_layer = torch.nn.TransformerEncoderLayer(embedding_dim, n_head, dim_feedforward=ff_dim, dropout=0.2)
         self.encoder = torch.nn.TransformerEncoder(self.encoder_layer, n_encoder_layers)
 
         # Masked output layers
-        self.masked_output = torch.nn.Sequential(torch.nn.Linear(embedding_dim, out_ff_dim),
+        self.masked_output_hidden = torch.nn.Sequential(torch.nn.Linear(embedding_dim, out_ff_dim),
                                                  torch.nn.LayerNorm(out_ff_dim),
-                                                 Swish(),
-                                                 torch.nn.Linear(out_ff_dim, n_heros))
+                                                 Swish())
+        self.masked_output_out = torch.nn.Linear(out_ff_dim, n_heros)
+        self.masked_output = torch.nn.Sequential(self.masked_output_hidden, self.masked_output_out)
 
         # Matching classifier layer - Only used for pretraining
         self.matching_output = torch.nn.Sequential(torch.nn.Linear(embedding_dim, out_ff_dim),
@@ -375,22 +377,21 @@ class DraftBert(torch.nn.Module):
                                                    Swish(),
                                                    torch.nn.Linear(out_ff_dim, 2))
         # Next hero prediction/Policy head
-        self.next_hero_output = torch.nn.Sequential(torch.nn.Linear(embedding_dim, out_ff_dim),
+        self.next_hero_output_hidden = torch.nn.Sequential(torch.nn.Linear(embedding_dim, out_ff_dim),
                                                    torch.nn.LayerNorm(out_ff_dim),
-                                                   Swish(),
-                                                   torch.nn.Linear(out_ff_dim, n_heros))
+                                                   Swish())
+        self.next_hero_out = torch.nn.Linear(out_ff_dim, n_heros)
+        self.next_hero_output = torch.nn.Sequential(self.next_hero_output_hidden, self.next_hero_out)
 
-        # TODO: """Add cluster prediction head - this is it but Connor wants to go over it. Actuallly I'm not so sure
-        #  how this should work. Maybe the win output and this head should share layers, since they'll be getting the
-        #  same input at the same time? In that case would we also train on cluster prediction loss during the agent
-        #  update step?
-        #  Or: they could be residual blocks. I.e., we train the cluster head and then the value head gets the hidden
-        #  layer as input and there's a residual block before predicting winner. That could work but it relies on the
-        #  clusters actually providing a good single. While we hope that's the case, we have no proof it is."""
-        self.cluster_output = torch.nn.Sequential(torch.nn.Linear(embedding_dim, out_ff_dim),
-                                                  torch.nn.LayerNorm(out_ff_dim),
-                                                  Swish(),
-                                                  torch.nn.LayerNorm(out_ff_dim, n_clusters))
+        self.cluster_output_hidden = torch.nn.Sequential(torch.nn.Linear(embedding_dim, out_ff_dim),
+                                                         torch.nn.LayerNorm(out_ff_dim),
+                                                         torch.nn.ReLU())
+        self.cluster_out = torch.nn.Linear(out_ff_dim, n_clusters)
+        self.cluster_output = torch.nn.Sequential(self.cluster_output_hidden, self.cluster_out)
+        self.friendly_cluster_update = torch.nn.Sequential(torch.nn.Linear(out_ff_dim, out_ff_dim),
+                                                           torch.nn.LayerNorm(out_ff_dim))
+        self.opponent_cluster_update = torch.nn.Sequential(torch.nn.Linear(out_ff_dim, out_ff_dim),
+                                                           torch.nn.LayerNorm(out_ff_dim))
 
         dictionary_size = n_heros
         self.hero_embeddings = torch.nn.Embedding(dictionary_size, embedding_dim, padding_idx=int(mask_idx))
@@ -403,6 +404,19 @@ class DraftBert(torch.nn.Module):
         self.le = None
         self.has_trained_on_all_pick = False
         self.has_trained_on_captains_mode = False
+
+    def get_cluster_predictions(self, src, mask):
+        if mask is not None:
+            src[mask] = torch.LongTensor([self.mask_idx] * src.shape[0])
+        first_to_pick_embeddings = src[:, [4, 5, 8, 9, 11], :].sum(1)
+        second_to_pick_embeddings = src[:, [16, 17, 20, 21, 23], :].sum(1)
+
+        first_to_pick_hidden = self.cluster_output_hidden(first_to_pick_embeddings)
+        second_to_pick_hidden = self.cluster_output_hidden(second_to_pick_embeddings)
+
+        first_to_pick_cluster = self.cluster_out(first_to_pick_hidden)
+        second_to_pick_cluster = self.cluster_out(second_to_pick_hidden)
+        return first_to_pick_cluster, second_to_pick_cluster, [first_to_pick_hidden, second_to_pick_hidden]
 
     def embed_lineup(self, lineup):
         if isinstance(lineup, (list, np.ndarray)):
@@ -440,37 +454,31 @@ class DraftBert(torch.nn.Module):
         out = out.permute(1, 0, 2)
         return out
 
-    def get_masked_output(self, x):
-        return self.masked_output(x)
+    def get_masked_output(self, x, friendly_cluster_h=None, opponent_cluster_h=None):
+        if self.n_clusters is None:
+            return self.masked_output(x)
+        else:
+            masked_hero_h = self.masked_output_hidden(x)
+            masked_hero_h += friendly_cluster_h
+            masked_hero_h += opponent_cluster_h
+            masked_hero_h = F.relu(masked_hero_h)
+            return self.masked_output_out(masked_hero_h)
 
     def get_matching_output(self, x):
         return self.matching_output(x)
 
-    def get_next_hero_output(self, x):
-        return self.next_hero_output(x)
+    def get_next_hero_output(self, x, friendly_cluster_h=None, opponent_cluster_h=None):
+        if self.n_clusters is None:
+            return self.next_hero_output(x)
+        else:
+            next_hero_h = self.next_hero_output_hidden(x)
+            next_hero_h += friendly_cluster_h
+            next_hero_h += opponent_cluster_h
+            next_hero_h = F.relu(next_hero_h)
+            return self.next_hero_out(next_hero_h)
 
     def get_win_output(self, x):
         return self.win_output(x)
-
-    def _gen_random_masks(self, x: torch.LongTensor, pct=0.1):
-        """
-
-        :param x: shape (batch_size, sequence_length, 1)
-        :param pct:
-        :return:
-        """
-        n_masked_idx = int((x.shape[1] - 3) * pct)
-        mask = np.append([1] * n_masked_idx, [0] * (x.shape[1] - n_masked_idx - 3))
-        mask = np.array([np.random.permutation(mask) for _ in range(x.shape[0])])
-        zeros = np.zeros((x.shape[0], 1))
-        mask = np.hstack((zeros,
-                          mask[:, :5],
-                          zeros,
-                          mask[:, 5:],
-                          zeros))
-
-        mask = torch.BoolTensor(mask)
-        return mask
 
     def pretrain_all_pick(self, dataset: AllPickDataset, **train_kwargs):
         self.has_trained_on_all_pick = True
@@ -502,6 +510,7 @@ class DraftBert(torch.nn.Module):
                 tgt_batch = copy.deepcopy(src_batch)
                 win_batch = batch[1]
                 mask_batch = batch[2]
+                cluster_batch = batch[3]
 
                 # Randomly shuffle the matchups for half the batch
                 is_correct_matchup = np.random.choice([0, 1], src_batch.shape[0])
@@ -513,8 +522,19 @@ class DraftBert(torch.nn.Module):
                     mask_batch = mask_batch.cuda()
 
                 out = self.forward(src_batch, mask_batch)  # -> shape (batch_size, sequence_length, embedding_dim)
+                if self.n_clusters is not None:
+                    cluster_out = self.get_cluster_predictions(src_batch, mask_batch)
+
                 to_predict = out[mask_batch]
-                mask_pred = self.get_masked_output(to_predict)
+                if self.n_clusters is not None:
+                    picking_team = mask_batch.argmax(-1) > 12
+                    friendly_cluster_hs = cluster_out[2][picking_team, :]
+                    opponent_cluster_hs = cluster_out[2][1-picking_team, :]
+                else:
+                    friendly_cluster_hs = None
+                    opponent_cluster_hs = None
+                mask_pred = self.get_masked_output(to_predict, friendly_cluster_hs, opponent_cluster_hs)
+
                 mask_tgt_batch = tgt_batch[mask_batch]
                 if cuda:
                     mask_tgt_batch = mask_tgt_batch.cuda()
