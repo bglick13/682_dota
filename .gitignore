@@ -16,3 +16,4 @@ secret.py
 \.DS_Store
 
 *.png
+/rollout_results/
