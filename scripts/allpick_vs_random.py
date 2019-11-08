@@ -32,6 +32,8 @@ def do_rollout(model, hero_ids, port, verbose=False):
 
     all_actions = []
     all_states = []
+    nn_values = []
+    uct_values = []
 
     while True:
         try:
@@ -41,7 +43,9 @@ def do_rollout(model, hero_ids, port, verbose=False):
 
         if npi < 13:
             if player.pick_first:
-                action, mcts_value, p, nn_value = player.act(state, action, num_reads=100)
+                action, uct_value, p, nn_value = player.act(state, action, num_reads=500)
+                nn_values.append(nn_value)
+                uct_values.append(uct_value)
             else:
                 legal_moves = draft.state.get_legal_moves
                 action = np.random.choice(legal_moves)
@@ -50,7 +54,9 @@ def do_rollout(model, hero_ids, port, verbose=False):
                 legal_moves = draft.state.get_legal_moves
                 action = np.random.choice(legal_moves)
             else:
-                action, mcts_value, p, nn_value = player.act(state, action, num_reads=100)
+                action, uct_value, p, nn_value = player.act(state, action, num_reads=500)
+                nn_values.append(nn_value)
+                uct_values.append(uct_value)
         all_states.append(state.game_state)
         all_actions.append(action)
         state, value, done = draft.step(action)
@@ -83,7 +89,7 @@ def do_rollout(model, hero_ids, port, verbose=False):
     del model
     torch.cuda.empty_cache()
     return dict(all_actions=all_actions, all_states=all_states, all_values=all_values,
-                all_agent_pick_first=all_agent_pick_first)
+                all_agent_pick_first=all_agent_pick_first, nn_values=nn_values, uct_values=uct_values)
 
 
 if __name__ == '__main__':
@@ -112,7 +118,7 @@ if __name__ == '__main__':
             memory.extend(results)
         times.append(time.time() - start_batch)
     end = time.time()
-    with open('../data/self_play/allpick_vs_random_memory.pickle', 'wb') as f:
+    with open('../data/self_play/allpick_vs_random_memory_500_rollouts.pickle', 'wb') as f:
         pickle.dump(memory, f)
 
     print(f'Played {n_games} games using {n_jobs} jobs in 5 batches in {times} seconds each and total time was {end - start} seconds.')
