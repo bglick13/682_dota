@@ -170,7 +170,6 @@ class DraftState(ABC):
             print(f'Radiant dota ids : {radiant_dota_ids}\Radiant model ids: {self.radiant}')
             print(f'Dire dota ids : {dire_dota_ids}\Dire model ids: {self.dire}')
 
-        # TODO generate game_id here so it's easily accessible
         return GameConfig(
             ticks_per_observation=self.TICKS_PER_OBSERVATION,
             host_timescale=self.HOST_TIMESCALE,

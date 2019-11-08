@@ -99,7 +99,7 @@ class DraftAgent(DummyAgent):
         next_state = state.take_action(action)
         nn_value = self.get_preds(next_state)[1]
         p = F.softmax(FloatTensor(values), -1).numpy()
-        return action, value, p, nn_value
+        return action, values, p, nn_value
 
     def get_preds(self, leaf: Union[UCTNode, DraftState]):
         if isinstance(leaf, UCTNode):

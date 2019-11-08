@@ -23,8 +23,10 @@ def do_rollout(model, hero_ids, port, verbose=False):
 
     all_actions = []
     all_states = []
-    player1_values = []
-    player2_values = []
+    player1_nn_values = []
+    player2_nn_values = []
+    player1_uct_values = []
+    player2_uct_values = []
 
     while True:
         try:
@@ -35,11 +37,13 @@ def do_rollout(model, hero_ids, port, verbose=False):
             raise IndexError
 
         if npi < 13:
-            action, mcts_value, p, nn_value = player1.act(state, action, num_reads=500)
-            player1_values.append(nn_value)
+            action, uct_value, p, nn_value = player1.act(state, action, num_reads=500)
+            player1_nn_values.append(nn_value)
+            player1_uct_values.append(uct_value)
         else:
-            action, mcts_value, p, nn_value = player2.act(state, action, num_reads=500)
-            player2_values.append(nn_value)
+            action, uct_value, p, nn_value = player2.act(state, action, num_reads=500)
+            player2_nn_values.append(nn_value)
+            player2_uct_values.append(uct_value)
 
         all_states.append(state.game_state)
         all_actions.append(action)
@@ -62,8 +66,8 @@ def do_rollout(model, hero_ids, port, verbose=False):
     all_values = [value] * 23
     del model
     empty_cache()
-    return dict(all_actions=all_actions, all_states=all_states, all_values=all_values, player1_values=player1_values,
-                player2_values=player2_values)
+    return dict(all_actions=all_actions, all_states=all_states, all_values=all_values, player1_nn_values=player1_nn_values,
+                player2_values=player2_nn_values, player1_uct_values=player1_uct_values, player2_uct_values=player2_uct_values)
 
 
 if __name__ == '__main__':
@@ -75,8 +79,8 @@ if __name__ == '__main__':
     model.eval()
     model.requires_grad = False
     memory_size = 500000
-    n_jobs = 1
-    n_games = 1
+    n_jobs = 4
+    n_games = 4
     port = 13337
     verbose = True
     hero_ids = pd.read_json('../const/draft_bert_hero_ids.json', orient='records')

@@ -584,8 +584,6 @@ class DraftBert(torch.nn.Module):
                     win_batch = win_batch.cuda()
 
                 out = self.forward(state_batch)  # -> shape (batch_size, sequence_length, embedding_dim)
-                # TODO: This is bad and I should feel bad - this needs to be draft order not just left to right
-                # to_predict = (src_batch == self.mask_idx).int().detach().cpu().numpy().argmax(-1)
                 to_predict = out[range(len(out)), to_predict.squeeze()]
                 mask_pred = self.get_masked_output(to_predict)
 
@@ -645,8 +643,6 @@ class DraftBert(torch.nn.Module):
                     win_batch = win_batch.cuda()
 
                 out = self.forward(src_batch)  # -> shape (batch_size, sequence_length, embedding_dim)
-                # TODO: This is bad and I should feel bad - this needs to be draft order not just left to right
-                # to_predict = (src_batch == self.mask_idx).int().detach().cpu().numpy().argmax(-1)
                 to_predict = out[range(len(out)), to_predict.squeeze()]
                 mask_pred = self.get_masked_output(to_predict)
 
