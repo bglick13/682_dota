@@ -219,6 +219,8 @@ class AllPickDataset(Dataset):
 
         self.matchups = []
         self.wins = []
+        self.r_clusters = []
+        self.d_clusters = []
 
         for edge in tqdm(g.edges(data=True)):
             r = edge[0]
@@ -226,8 +228,12 @@ class AllPickDataset(Dataset):
             if 0 in r or 0 in d:  # One of the teams has an invalid hero ID
                 continue
             # Start with a CLS token and separate the teams with a SEP token
+            if self.clusterizer is not None:
+                r_cluster = self.clusterizer.predict([r])[0]
+                d_cluster = self.clusterizer.predict([d])[0]
             r = self.le.transform(r)
             d = self.le.transform(d)
+
             heros = np.concatenate(([self.CLS],  # Always start with the CLS token - index [0]
                                     # Radiant - starts at index 1
                                     np.ones(3) * self.MASK,  # First wave of 3 bans - indices [1, 2, 3]
@@ -250,6 +256,9 @@ class AllPickDataset(Dataset):
             for _, w in enumerate(edge[2]['wins']):
                 w = self.le.transform(w)
                 self.matchups.append(heros)
+                if self.clusterizer is not None:
+                    self.r_clusters.append(r_cluster)
+                    self.d_clusters.append(d_cluster)
                 # 1 if Radiant victory, 0 if Dire victory
                 if np.sum(w == r) == 5:
                     self.wins.append(1)
@@ -308,8 +317,8 @@ class AllPickDataset(Dataset):
         d = np.random.permutation(m[[16, 17, 20, 21, 23]])
 
         if self.clusterizer is not None:
-            r_cluster = self.clusterizer.predict([self.le.inverse_transform(r.astype(int))])[0]
-            d_cluster = self.clusterizer.predict([self.le.inverse_transform(d.astype(int))])[0]
+            r_cluster = self.r_clusters[index]
+            d_cluster = self.d_clusters[index]
         else:
             r_cluster = None
             d_cluster = None
@@ -435,7 +444,7 @@ class DraftBert(torch.nn.Module):
         second_to_pick_cluster = self.cluster_out(second_to_pick_hidden)
         return (first_to_pick_cluster, second_to_pick_cluster,
                 torch.cat([first_to_pick_hidden, second_to_pick_hidden]).view(2, first_to_pick_hidden.shape[0],
-                                                                              first_to_pick_hidden.shape[1]))
+                                                                              first_to_pick_hidden.shape[1]).permute(1, 0, 2))
 
     def embed_lineup(self, lineup):
         if isinstance(lineup, (list, np.ndarray)):
@@ -521,6 +530,8 @@ class DraftBert(torch.nn.Module):
         mask_loss = torch.nn.CrossEntropyLoss(reduction='mean')
         matching_loss = torch.nn.CrossEntropyLoss(reduction='mean')
         win_loss = torch.nn.CrossEntropyLoss(reduction='mean')
+        cluster_loss = torch.nn.CrossEntropyLoss(reduction='mean')
+
         for epoch in tqdm(range(epochs)):
             for i, batch in tqdm(enumerate(dataloader)):
                 opt.zero_grad()
@@ -546,16 +557,18 @@ class DraftBert(torch.nn.Module):
 
                 to_predict = out[mask_batch]
                 if self.n_clusters is not None:
-                    picking_team = mask_batch.argmax(-1) > 12
-                    _pt = torch.zeros((1024, 2))
-                    _pt[range(batch_size), picking_team.long()] = 1
-                    picking_team = _pt
-                    friendly_cluster_hs = cluster_out[2][picking_team, :]
-                    opponent_cluster_hs = cluster_out[2][1-picking_team, :]
+                    picking_team = (mask_batch.argmax(-1) > 12).long()
+                    friendly_cluster_hs = cluster_out[2][range(batch_size), picking_team]
+                    opponent_cluster_hs = cluster_out[2][range(batch_size), 1 - picking_team]
                 else:
                     friendly_cluster_hs = None
                     opponent_cluster_hs = None
                 mask_pred = self.get_masked_output(to_predict, friendly_cluster_hs, opponent_cluster_hs)
+
+                if self.n_clusters is not None:
+                    cluster_pred = torch.cat((cluster_out[0], cluster_out[1]))
+                    cluster_tgt = torch.cat((cluster_batch[:, 0], cluster_batch[:, 1])).cuda()
+                    cluster_loss_batch = cluster_loss(cluster_pred, cluster_tgt)
 
                 mask_tgt_batch = tgt_batch[mask_batch]
                 if cuda:
@@ -573,7 +586,12 @@ class DraftBert(torch.nn.Module):
                     win_batch = win_batch.cuda()
                 batch_win_loss = win_loss(win_pred, win_batch.squeeze())
 
-                batch_loss = (mask_batch_loss + is_correct_loss + batch_win_loss) / 3.
+                batch_loss = (mask_batch_loss + is_correct_loss + batch_win_loss)
+                if self.n_clusters is None:
+                    batch_loss /= 3
+                else:
+                    batch_loss += cluster_loss_batch
+                    batch_loss /= 4
                 batch_loss.backward()
                 opt.step()
 
@@ -584,16 +602,23 @@ class DraftBert(torch.nn.Module):
                     top_5_pred = np.argsort(mask_pred.detach().cpu().numpy(), axis=1)[:, -5:]
                     top_5_acc = np.array(
                         [t in p for t, p in zip(mask_tgt_batch.detach().cpu().numpy(), top_5_pred)]).astype(int).mean()
+
                     matching_acc = (is_correct_pred.detach().cpu().numpy().argmax(
                         1) == is_correct_matchup.detach().cpu().numpy()).astype(int).mean()
 
                     win_acc = (win_pred.detach().cpu().numpy().argmax(
                         1) == win_batch.squeeze().detach().cpu().numpy()).astype(int).mean()
 
+                    if self.n_clusters is not None:
+                        cluster_acc = (cluster_pred.detach().cpu().numpy().argmax(
+                        1) == cluster_tgt.squeeze().detach().cpu().numpy()).astype(int).mean()
+                    else:
+                        cluster_acc = -1
+
                     print(
                         f'Epoch: {epoch}, Step: {i}, Loss: {batch_loss}, Acc: {batch_acc}, Top 5 Acc: {top_5_acc},'
-                        f'Matching Acc: {matching_acc}, Win Acc: {win_acc}')
-            torch.save(self, f'../weights/checkpoints/draft_bert_pretrain__allpick_checkpoint_{epoch}.torch')
+                        f'Matching Acc: {matching_acc}, Win Acc: {win_acc}, Cluster Acc: {cluster_acc}')
+            torch.save(self, f'../weights/checkpoints/draft_bert_pretrain_allpick_checkpoint_{epoch}.torch')
 
     def train_from_selfplay(self, dataset: SelfPlayDataset, **train_kwargs):
         self.train()

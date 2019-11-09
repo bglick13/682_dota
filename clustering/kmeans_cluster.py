@@ -33,7 +33,7 @@ class KmeansCluster(object):
 		data = np.array([[comps[i].count(role) for role in self.classes] for i in range(len(comps))])
 		data = data / np.sum(data, axis = 1).reshape(-1,1)
 		X = pd.DataFrame(data, columns = self.classes)
-		
+
 		return X
 
 	def fit(self, X, centroids=None):

@@ -9,6 +9,7 @@ import networkx as nx
 import os
 
 if __name__ == '__main__':
+    load_dataset = False
     col_format = ['R_Ban', 'D_Ban', 'R_Ban', 'D_Ban', 'R_Ban', 'D_Ban',
                   'R_Pick', 'D_Pick', 'D_Pick', 'R_Pick',
                   'R_Ban', 'D_Ban', 'R_Ban', 'D_Ban',
@@ -21,16 +22,16 @@ if __name__ == '__main__':
         clusterizer = pickle.load(f)
     # hero_ids = hero_ids.set_index('id')
     file_name = '../tmp/test_matchups_3135389989.pkl'
-    if os.path.isfile('../data/all_pick_dataset.pickle'):
+    if os.path.isfile('../data/all_pick_dataset.pickle') and load_dataset:
         with open('../data/all_pick_dataset.pickle', 'rb') as f:
             dataset: AllPickDataset = pickle.load(f)
     else:
-        dataset = AllPickDataset(file_name, hero_ids, mask_pct=.1, test_pct=.15)
-        with open('all_pick_dataset.pickle', 'wb') as f:
+        print('creating dataset')
+        dataset = AllPickDataset(file_name, hero_ids, mask_pct=.1, test_pct=.15, clusterizer=clusterizer)
+        with open('all_pick_dataset_clusters.pickle', 'wb') as f:
             pickle.dump(dataset, f)
 
-    dataset.hero_ids.to_json('../const/draft_bert_hero_ids.json')
-    dataset.clusterizer = clusterizer
+    dataset.hero_ids.to_json('../const/draft_bert_clustering_hero_ids.json')
 
     mask_idx = dataset.MASK
     model: DraftBert = DraftBert(embedding_dim=256, n_head=4, n_encoder_layers=4, ff_dim=256,
@@ -44,32 +45,4 @@ if __name__ == '__main__':
     model.cuda()
 
     model.pretrain_all_pick(dataset, **{'epochs': int(100), 'lr': 1.0e-4, 'batch_size': 1024, 'mask_pct': 0.1})
-
-    # all_pred, all_true = [], []
-    # for i, td in enumerate(test_data):
-    #     td = np.array([td])
-    #     test_masks = model._gen_random_masks(td, pct=0.1)
-    #     # test_masks = np.array([np.append([False] * ((i+1) % 22), [True] * (22 - ((i+1) % 22)))])
-    #     pred = model.predict(td, test_masks, DraftBertTasks.DRAFT_PREDICTION)
-    #
-    #     actual = td[0]
-    #     actual = le.inverse_transform(actual)
-    #     actual = np.array([hero_ids.loc[h, 'localized_name'] for h in actual])
-    #     masked = actual.copy()
-    #     masked[test_masks[0]] = None
-    #     predicted = actual.copy()
-    #     pred = pred.argmax(1).detach().cpu().numpy()
-    #
-    #     # Go from dense index prediction to corresponding hero_id
-    #     pred = le.inverse_transform(pred)
-    #     pred = np.array([hero_ids.loc[h, 'localized_name'] for h in pred])
-    #     predicted[test_masks[0]] = pred
-    #     all_pred.extend(pred)
-    #     all_true.extend(actual[test_masks[0]])
-    #
-    #     s = pd.DataFrame(index=col_format, data={'Actual': actual, 'Masked': masked, 'Predicted': predicted})
-    #     if i <= 10:
-    #         print(s)
-    # acc = (np.array(all_pred) == np.array(all_true)).astype(int).mean()
-    # print(f'test acc: {acc}')
-    torch.save(model, 'draft_bert_pretrain_matching.torch')
+    torch.save(model, 'draft_bert_pretrain_matching_with_clusters.torch')
