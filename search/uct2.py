@@ -10,9 +10,10 @@ class DummyNode(object):
 
 
 class UCTNode(object):
-    def __init__(self, state, move, parent=None):
+    def __init__(self, state, move, parent=None, eps=0.1):
         self.state = state
         self.move = move
+        self.eps = eps
         self.is_expanded = False
         self.is_terminal = False
         self.parent = parent
@@ -62,6 +63,9 @@ class UCTNode(object):
         illegal_moves[legal_moves] = False
         values[illegal_moves] = -np.inf
         best = np.random.choice(np.flatnonzero(np.isclose(values, values.max())))  # This should randomly draw from tied best
+        if np.random.uniform() <= self.eps:
+            np.random.seed()
+            best = np.random.choice(np.flatnonzero([values != -np.inf]))
         return best, values[best], values
 
     def expand(self, child_priors):
@@ -101,9 +105,9 @@ class UCT():
             node = node.parent
 
 
-def UCT_search (state, num_reads):
+def UCT_search (state, num_rollouts):
     root = UCTNode(state, move = None, parent = DummyNode())
-    for _ in range(num_reads):
+    for _ in range(num_rollouts):
         leaf = root.select_leaf()
         child_priors, value_estimate = nn.evaluate(leaf.state)
         leaf.expand(child_priors)
