@@ -9,7 +9,7 @@ import networkx as nx
 import os
 
 if __name__ == '__main__':
-    load_dataset = False
+    load_dataset = True
     col_format = ['R_Ban', 'D_Ban', 'R_Ban', 'D_Ban', 'R_Ban', 'D_Ban',
                   'R_Pick', 'D_Pick', 'D_Pick', 'R_Pick',
                   'R_Ban', 'D_Ban', 'R_Ban', 'D_Ban',
@@ -20,18 +20,17 @@ if __name__ == '__main__':
     hero_ids = pd.read_json('../const/hero_ids.json', orient='records')
     with open('../weights/kmeans.pickle', 'rb') as f:
         clusterizer = pickle.load(f)
-    # hero_ids = hero_ids.set_index('id')
-    file_name = '../tmp/test_matchups_3135389989.pkl'
-    if os.path.isfile('../data/all_pick_dataset.pickle') and load_dataset:
-        with open('../data/all_pick_dataset.pickle', 'rb') as f:
+
+    if os.path.isfile('../data/all_pick_dataset_clusters.pickle') and load_dataset:
+        with open('../data/all_pick_dataset_clusters.pickle', 'rb') as f:
             dataset: AllPickDataset = pickle.load(f)
     else:
         print('creating dataset')
+        file_name = '../tmp/test_matchups_3135389989.pkl'
         dataset = AllPickDataset(file_name, hero_ids, mask_pct=.1, test_pct=.15, clusterizer=clusterizer)
-        with open('all_pick_dataset_clusters.pickle', 'wb') as f:
+        dataset.hero_ids.to_json('../const/draft_bert_clustering_hero_ids.json')
+        with open('../data/all_pick_dataset_clusters.pickle', 'wb') as f:
             pickle.dump(dataset, f)
-
-    dataset.hero_ids.to_json('../const/draft_bert_clustering_hero_ids.json')
 
     mask_idx = dataset.MASK
     model: DraftBert = DraftBert(embedding_dim=256, n_head=4, n_encoder_layers=4, ff_dim=256,
@@ -44,5 +43,12 @@ if __name__ == '__main__':
 
     model.cuda()
 
-    model.pretrain_all_pick(dataset, **{'epochs': int(100), 'lr': 1.0e-4, 'batch_size': 1024, 'mask_pct': 0.1})
+    train_hist = model.pretrain_all_pick(dataset, **{'epochs': int(1), 'lr': 1.0e-4, 'batch_size': 1024, 'mask_pct': 0.1})
+    with open('all_pick_pretrain_train_hist.pickle', 'wb') as f:
+        pickle.dump(train_hist, f)
     torch.save(model, 'draft_bert_pretrain_matching_with_clusters.torch')
+    test_hist = model.pretrain_all_pick(dataset, **{'epochs': int(1), 'lr': 1.0e-4, 'batch_size': 1024,
+                                                    'mask_pct': 0.1, 'test': True, 'print_iter': 1})
+
+    with open('all_pick_pretrain_test_hist.pickle', 'wb') as f:
+        pickle.dump(test_hist, f)

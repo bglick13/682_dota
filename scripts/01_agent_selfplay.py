@@ -21,6 +21,7 @@ def do_rollout(model, hero_ids, port, verbose=False):
     turn = 0
     action = -1
 
+    # TODO: record and train on final cluster values here
     all_actions = []
     all_states = []
     player1_nn_values = []

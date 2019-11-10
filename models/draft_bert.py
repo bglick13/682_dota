@@ -34,10 +34,6 @@ def subsequent_mask(size):
     return subsequent_mask
 
 
-# TODO: """Cluster dataset generator for pretraining - similar to captains mode logic probably but instead of
-#  random masking it's sequential. And we'll obviously need to create a clustering object first to generate the
-#  labels"""
-
 class SelfPlayDataset(Dataset):
     def __init__(self, *memories, test_pct=0):
         self.test_pct = test_pct
@@ -96,9 +92,10 @@ class SelfPlayDataset(Dataset):
     def __len__(self):
         return len(self.states)
 
+
 class CaptainsModeDataset(Dataset):
     def __init__(self, df: Union[pd.DataFrame, str], hero_ids: pd.DataFrame, label_encoder: LabelEncoder=None,
-                 sep: int=None, cls: int=None, mask: int=None, test_pct: float = 0,):
+                 sep: int=None, cls: int=None, mask: int=None, test_pct: float = 0, clusterizer: KmeansCluster = None):
         if isinstance(df, pd.DataFrame):
             df = df
         elif isinstance(df, str):
@@ -110,6 +107,7 @@ class CaptainsModeDataset(Dataset):
         self.SEP = sep
         self.CLS = cls
         self.MASK = int(mask)
+        self.clusterizer = clusterizer
 
         self.draft_order = np.array([1, 13, 2, 14, 3, 15,
                                      4, 16, 5, 17,
@@ -120,6 +118,8 @@ class CaptainsModeDataset(Dataset):
 
         self.matchups = []
         self.wins = []
+        self.fp_clusters = []
+        self.sp_clusters = []
         self.mask_idxs = np.append(np.arange(1, 12), np.arange(13, 24))
         for key, grp in df.groupby('match_seq_num'):
             if len(grp) < 22:
@@ -127,24 +127,28 @@ class CaptainsModeDataset(Dataset):
             first_pick_heros = grp['hero_id'].values[[0, 2, 4, 6, 9, 11, 13, 15, 17, 19, 20]]
             second_pick_heros = grp['hero_id'].values[[1, 3, 5, 7, 8, 10, 12, 14, 16, 18, 21]]
 
+            if self.clusterizer is not None:
+                # These are different because the steam API orders the picks differently than we do - don't freak out!
+                fp_cluster = self.clusterizer.predict([grp['hero_id'].values[[6, 9, 15, 17, 20]]])[0]
+                sp_cluster = self.clusterizer.predict([grp['hero_id'].values[[7, 8, 14, 16, 21]]])[0]
+
             # Transform from Dota hero ids to model hero ids
             if self.le is not None:
                 first_pick_heros = self.le.transform(first_pick_heros)
                 second_pick_heros = self.le.transform(second_pick_heros)
 
-            heros = np.concatenate((#[self.CLS],  # Always start with the CLS token - index [0]
-                                    # Radiant - starts at index 1
-                                    first_pick_heros,
-                                    #[self.SEP],  # Index [12]
-                                    # Dire - starts at index 13
-                                    second_pick_heros,
-                                    #[self.SEP]  # Index [24])
-                                    ))
-            self.matchups.append(heros)
+            heros = np.concatenate((first_pick_heros, second_pick_heros))
             first_pick_win = (grp['team'].values[0] - int(grp['radiant_win'].values[0])) != 0
+            self.matchups.append(heros)
             self.wins.append(first_pick_win)
+            if self.clusterizer is not None:
+                self.fp_clusters.append(fp_cluster)
+                self.sp_clusters.append(sp_cluster)
+
         self.matchups = np.array(self.matchups)
         self.wins = np.array(self.wins)
+        self.fp_clusters = np.array(self.fp_clusters)
+        self.sp_clusters = np.array(self.sp_clusters)
 
         if self.test_pct > 0:
             self.test_idxs = np.random.choice(range(len(self.matchups)), int(len(self.matchups) * self.test_pct),
@@ -179,8 +183,15 @@ class CaptainsModeDataset(Dataset):
         # _m = m[:, self.mask_idxs]
         m[mask.astype(bool)] = int(self.MASK)
         m = torch.LongTensor(m)
+        if self.clusterizer is not None:
+            fp_cluster = self.fp_clusters[index]
+            sp_cluster = self.sp_clusters[index]
+            clusters = torch.LongTensor([fp_cluster, sp_cluster]).repeat(22).reshape(22, 2)
+        else:
+            clusters = None
 
-        return m, t, torch.LongTensor([self.wins[index]]).repeat(22), torch.LongTensor(self.draft_order)
+        return (m, t, torch.LongTensor([self.wins[index]]).repeat(22), torch.LongTensor(self.draft_order),
+                clusters)
 
     def __len__(self):
         if self.train:
@@ -409,6 +420,7 @@ class DraftBert(torch.nn.Module):
         self.next_hero_out = torch.nn.Linear(out_ff_dim, n_heros)
         self.next_hero_output = torch.nn.Sequential(self.next_hero_output_hidden, self.next_hero_out)
 
+        # Cluster related layers
         self.cluster_output_hidden = torch.nn.Sequential(torch.nn.Linear(embedding_dim, out_ff_dim),
                                                          torch.nn.LayerNorm(out_ff_dim),
                                                          torch.nn.ReLU())
@@ -431,7 +443,7 @@ class DraftBert(torch.nn.Module):
         self.has_trained_on_all_pick = False
         self.has_trained_on_captains_mode = False
 
-    def get_cluster_predictions(self, src, mask):
+    def get_cluster_predictions(self, src, mask=None):
         if mask is not None:
             src[mask] = self.mask_idx
         first_to_pick_embeddings = src[:, [4, 5, 8, 9, 11], :].sum(1)
@@ -514,27 +526,33 @@ class DraftBert(torch.nn.Module):
         self.cls = dataset.CLS
         self.sep = dataset.SEP
         self.le = dataset.le
-
-        self.train()
         lr = train_kwargs.get('lr', 0.001)
         batch_size = train_kwargs.get('batch_size', 512)
         epochs = train_kwargs.get('epochs', 100)
         mask_pct = train_kwargs.get('mask_pct', 0.1)
         print_iter = train_kwargs.get('print_iter', 100)
         save_iter = train_kwargs.get('save_iter', 100000)
+        test = train_kwargs.get('test', False)
+        if test:
+            dataset.train = False
+            self.eval()
+        else:
+            self.train()
 
         dataset.mask_pct = mask_pct
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4)
-
-        opt = torch.optim.Adam(self.parameters(), lr=lr)
+        if not test:
+            opt = torch.optim.Adam(self.parameters(), lr=lr)
         mask_loss = torch.nn.CrossEntropyLoss(reduction='mean')
         matching_loss = torch.nn.CrossEntropyLoss(reduction='mean')
         win_loss = torch.nn.CrossEntropyLoss(reduction='mean')
         cluster_loss = torch.nn.CrossEntropyLoss(reduction='mean')
 
+        hist = dict(epoch=[], step=[], masked_hero_acc=[], top_5_acc=[], cluster_acc=[], win_acc=[], loss=[])
         for epoch in tqdm(range(epochs)):
             for i, batch in tqdm(enumerate(dataloader)):
-                opt.zero_grad()
+                if not test:
+                    opt.zero_grad()
 
                 src_batch = batch[0]
                 tgt_batch = copy.deepcopy(src_batch)
@@ -558,8 +576,8 @@ class DraftBert(torch.nn.Module):
                 to_predict = out[mask_batch]
                 if self.n_clusters is not None:
                     picking_team = (mask_batch.argmax(-1) > 12).long()
-                    friendly_cluster_hs = cluster_out[2][range(batch_size), picking_team]
-                    opponent_cluster_hs = cluster_out[2][range(batch_size), 1 - picking_team]
+                    friendly_cluster_hs = cluster_out[2][range(tgt_batch.shape[0]), picking_team]
+                    opponent_cluster_hs = cluster_out[2][range(tgt_batch.shape[0]), 1 - picking_team]
                 else:
                     friendly_cluster_hs = None
                     opponent_cluster_hs = None
@@ -592,8 +610,10 @@ class DraftBert(torch.nn.Module):
                 else:
                     batch_loss += cluster_loss_batch
                     batch_loss /= 4
-                batch_loss.backward()
-                opt.step()
+
+                if not test:
+                    batch_loss.backward()
+                    opt.step()
 
                 if i == 0 or (i + 1) % print_iter == 0:
                     batch_acc = (
@@ -614,11 +634,19 @@ class DraftBert(torch.nn.Module):
                         1) == cluster_tgt.squeeze().detach().cpu().numpy()).astype(int).mean()
                     else:
                         cluster_acc = -1
-
+                    hist['epoch'].append(epoch)
+                    hist['step'].append(i)
+                    hist['masked_hero_acc'].append(batch_acc)
+                    hist['cluster_acc'].append(cluster_acc)
+                    hist['win_acc'].append(win_acc)
+                    hist['top_5_acc'].append(top_5_acc)
+                    hist['loss'].append(batch_loss.detach().cpu().numpy())
                     print(
                         f'Epoch: {epoch}, Step: {i}, Loss: {batch_loss}, Acc: {batch_acc}, Top 5 Acc: {top_5_acc},'
                         f'Matching Acc: {matching_acc}, Win Acc: {win_acc}, Cluster Acc: {cluster_acc}')
-            torch.save(self, f'../weights/checkpoints/draft_bert_pretrain_allpick_checkpoint_{epoch}.torch')
+            if not test:
+                torch.save(self, f'../weights/checkpoints/draft_bert_pretrain_allpick_checkpoint_{epoch}.torch')
+        return hist
 
     def train_from_selfplay(self, dataset: SelfPlayDataset, **train_kwargs):
         self.train()
@@ -639,16 +667,19 @@ class DraftBert(torch.nn.Module):
                 action_batch = batch[1]
                 win_batch = batch[2]
                 to_predict = batch[3]
+                cluster_batch = batch[4]
 
                 state_batch = torch.LongTensor(state_batch.reshape(-1, 25).long())
                 action_batch = torch.LongTensor(action_batch.reshape(-1, 1).long())
                 win_batch = torch.LongTensor(win_batch.reshape(-1, 1).long())
                 to_predict = to_predict.reshape(-1, 1).long()
+                cluster_batch = cluster_batch.reshape(-1, 1).long()
 
                 if cuda:
                     state_batch = state_batch.cuda()
                     action_batch = action_batch.cuda()
                     win_batch = win_batch.cuda()
+                    cluster_batch = cluster_batch.cuda()
 
                 out = self.forward(state_batch)  # -> shape (batch_size, sequence_length, embedding_dim)
                 to_predict = out[range(len(out)), to_predict.squeeze()]
@@ -690,6 +721,8 @@ class DraftBert(torch.nn.Module):
         opt = torch.optim.Adam(self.parameters(), lr=lr)
         next_hero_loss = torch.nn.CrossEntropyLoss(reduction='mean')
         win_loss = torch.nn.CrossEntropyLoss(reduction='mean')
+        cluster_loss = torch.nn.CrossEntropyLoss(reduction='mean')
+
         for epoch in tqdm(range(epochs)):
             for i, batch in tqdm(enumerate(dataloader)):
                 opt.zero_grad()
@@ -698,27 +731,48 @@ class DraftBert(torch.nn.Module):
                 tgt_batch = batch[1]
                 win_batch = batch[2]
                 to_predict = batch[3]
+                cluster_batch = batch[4]
 
                 src_batch = src_batch.reshape(-1, 25)
                 tgt_batch = tgt_batch.reshape(-1, 1)
                 win_batch = win_batch.reshape(-1, 1)
                 to_predict = to_predict.reshape(-1, 1)
+                picking_team = to_predict > 12
+                cluster_batch = cluster_batch.reshape(-1, 1).long()
 
                 if cuda:
                     src_batch = src_batch.cuda()
                     tgt_batch = tgt_batch.cuda()
                     win_batch = win_batch.cuda()
+                    cluster_batch = cluster_batch.cuda()
 
                 out = self.forward(src_batch)  # -> shape (batch_size, sequence_length, embedding_dim)
+                if self.n_clusters is not None:
+                    cluster_out = self.get_cluster_predictions(out)
+                    friendly_cluster_hs = cluster_out[2][range(tgt_batch.shape[0]), picking_team]
+                    opponent_cluster_hs = cluster_out[2][range(tgt_batch.shape[0]), 1 - picking_team]
+                    cluster_pred = torch.cat((cluster_out[0], cluster_out[1]))
+                    cluster_tgt = torch.cat((cluster_batch[:, 0], cluster_batch[:, 1])).cuda()
+                    cluster_loss_batch = cluster_loss(cluster_pred, cluster_tgt)
+                else:
+                    friendly_cluster_hs = None
+                    opponent_cluster_hs = None
+
                 to_predict = out[range(len(out)), to_predict.squeeze()]
-                mask_pred = self.get_masked_output(to_predict)
+
+                mask_pred = self.get_masked_output(to_predict, friendly_cluster_hs, opponent_cluster_hs)
 
                 mask_batch_loss = next_hero_loss(mask_pred, tgt_batch.squeeze())
 
                 win_pred = self.get_win_output(out[:, 0, :])
                 batch_win_loss = win_loss(win_pred, win_batch.squeeze())
 
-                batch_loss = (mask_batch_loss + batch_win_loss) / 2.
+                batch_loss = (mask_batch_loss + batch_win_loss)
+                if self.n_clusters is None:
+                    batch_loss /= 2
+                else:
+                    batch_loss += cluster_loss_batch
+                    batch_loss /= 3
                 batch_loss.backward()
                 opt.step()
 
@@ -735,7 +789,7 @@ class DraftBert(torch.nn.Module):
 
                     print(
                         f'Epoch: {epoch}, Step: {i}, Loss: {batch_loss}, Acc: {batch_acc}, Top 5 Acc: {top_5_acc}, Win Acc: {win_acc}')
-            torch.save(self, f'../weights/checkpoints/draft_bert_pretrain__captains_mode_checkpoint_{epoch}.torch')
+            torch.save(self, f'../weights/checkpoints/draft_bert_pretrain_captains_mode_checkpoint_{epoch}.torch')
 
     def fit(self, src: torch.LongTensor, tgt: torch.LongTensor, task: DraftBertTasks, **train_kwargs):
         """

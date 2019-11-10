@@ -126,7 +126,7 @@ class DraftAgent(DummyAgent):
             legal_moves = state.get_legal_moves
             illegal_moves = np.ones(probs.shape, dtype=bool)
             illegal_moves[legal_moves] = False
-            probs[illegal_moves] = -100
+            probs[illegal_moves] = 0
             probs = F.softmax(probs, -1).detach().cpu().numpy()
         else:
             probs = None
