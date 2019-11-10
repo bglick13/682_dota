@@ -62,6 +62,7 @@ class DraftAgent(DummyAgent):
         leaf = self.solver.rollout()
         value = self.evaluate_leaf(leaf)
         self.solver.backup(leaf, value)
+        return leaf
 
     def update_network(self, batch_size, steps):
         """
@@ -93,13 +94,14 @@ class DraftAgent(DummyAgent):
             # self.root.number_visits += 1
             self.solver.root = self.root
 
+        leafs = []
         for _ in range(num_reads):
-            self.simulate()
+            leafs.append(self.simulate())
         action, value, values = self.root.best_child()
         next_state = state.take_action(action)
         nn_value = self.get_preds(next_state)[1]
         p = F.softmax(FloatTensor(values), -1).numpy()
-        return action, values, p, nn_value
+        return action, values, p, nn_value, leafs
 
     def get_preds(self, leaf: Union[UCTNode, DraftState]):
         if isinstance(leaf, UCTNode):
