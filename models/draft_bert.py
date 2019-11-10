@@ -1,14 +1,20 @@
-import torch
-from torch.functional import F
-from torch.utils.data import Dataset, DataLoader
+import copy
+import warnings
 from enum import Enum
+from typing import Union
+
+import networkx as nx
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
-import networkx as nx
+import torch
 from sklearn.preprocessing import LabelEncoder
-from typing import Union
-import copy
+from torch.functional import F
+from torch.utils.data import Dataset, DataLoader
+from tqdm import tqdm
+
+from clustering.kmeans_cluster import KmeansCluster
+
+warnings.filterwarnings("ignore")
 
 
 pd.set_option('display.max_rows', 200)
@@ -184,7 +190,8 @@ class CaptainsModeDataset(Dataset):
 
 
 class AllPickDataset(Dataset):
-    def __init__(self, g: Union[nx.Graph, str], hero_ids: pd.DataFrame, test_pct: float = 0, mask_pct=0.1):
+    def __init__(self, g: Union[nx.Graph, str], hero_ids: pd.DataFrame, test_pct: float = 0, mask_pct=0.1,
+                 clusterizer: KmeansCluster = None):
         if isinstance(g, nx.Graph):
             g = g
         elif isinstance(g, str):
@@ -202,6 +209,7 @@ class AllPickDataset(Dataset):
         self.hero_ids['model_id'] = self.le.fit_transform(self.hero_ids['id'])
         self.test_pct = test_pct
         self.mask_pct = mask_pct
+        self.clusterizer = clusterizer
 
         self.MASK = self.hero_ids.loc[self.hero_ids['id'] == -1, 'model_id'].values[0]
         self.SEP = self.hero_ids.loc[self.hero_ids['id'] == -2, 'model_id'].values[0]
@@ -211,6 +219,8 @@ class AllPickDataset(Dataset):
 
         self.matchups = []
         self.wins = []
+        self.r_clusters = []
+        self.d_clusters = []
 
         for edge in tqdm(g.edges(data=True)):
             r = edge[0]
@@ -218,8 +228,12 @@ class AllPickDataset(Dataset):
             if 0 in r or 0 in d:  # One of the teams has an invalid hero ID
                 continue
             # Start with a CLS token and separate the teams with a SEP token
+            if self.clusterizer is not None:
+                r_cluster = self.clusterizer.predict([r])[0]
+                d_cluster = self.clusterizer.predict([d])[0]
             r = self.le.transform(r)
             d = self.le.transform(d)
+
             heros = np.concatenate(([self.CLS],  # Always start with the CLS token - index [0]
                                     # Radiant - starts at index 1
                                     np.ones(3) * self.MASK,  # First wave of 3 bans - indices [1, 2, 3]
@@ -242,6 +256,9 @@ class AllPickDataset(Dataset):
             for _, w in enumerate(edge[2]['wins']):
                 w = self.le.transform(w)
                 self.matchups.append(heros)
+                if self.clusterizer is not None:
+                    self.r_clusters.append(r_cluster)
+                    self.d_clusters.append(d_cluster)
                 # 1 if Radiant victory, 0 if Dire victory
                 if np.sum(w == r) == 5:
                     self.wins.append(1)
@@ -298,12 +315,21 @@ class AllPickDataset(Dataset):
         m = self.matchups[index]
         r = np.random.permutation(m[[4, 5, 8, 9, 11]])
         d = np.random.permutation(m[[16, 17, 20, 21, 23]])
+
+        if self.clusterizer is not None:
+            r_cluster = self.r_clusters[index]
+            d_cluster = self.d_clusters[index]
+        else:
+            r_cluster = None
+            d_cluster = None
+
         m[[4, 5, 8, 9, 11]] = r
         m[[16, 17, 20, 21, 23]] = d
 
         return (torch.LongTensor(m),
                 torch.LongTensor([self.wins[index]]),
-                mask)
+                mask,
+                torch.LongTensor([r_cluster, d_cluster]))
 
     def __len__(self):
         if self.train:
@@ -346,21 +372,23 @@ class Swish(torch.nn.Module):
 
 
 class DraftBert(torch.nn.Module):
-    def __init__(self, embedding_dim, ff_dim, n_head, n_encoder_layers, n_heros, out_ff_dim, mask_idx):
+    def __init__(self, embedding_dim, ff_dim, n_head, n_encoder_layers, n_heros, out_ff_dim, mask_idx, n_clusters=None):
         super().__init__()
         self.embedding_dim = embedding_dim
         self.n_head = n_head
         self.n_encoder_layers = n_encoder_layers
         self.n_heros = n_heros
+        self.n_clusters = n_clusters
 
         self.encoder_layer = torch.nn.TransformerEncoderLayer(embedding_dim, n_head, dim_feedforward=ff_dim, dropout=0.2)
         self.encoder = torch.nn.TransformerEncoder(self.encoder_layer, n_encoder_layers)
 
         # Masked output layers
-        self.masked_output = torch.nn.Sequential(torch.nn.Linear(embedding_dim, out_ff_dim),
+        self.masked_output_hidden = torch.nn.Sequential(torch.nn.Linear(embedding_dim, out_ff_dim),
                                                  torch.nn.LayerNorm(out_ff_dim),
-                                                 Swish(),
-                                                 torch.nn.Linear(out_ff_dim, n_heros))
+                                                 Swish())
+        self.masked_output_out = torch.nn.Linear(out_ff_dim, n_heros)
+        self.masked_output = torch.nn.Sequential(self.masked_output_hidden, self.masked_output_out)
 
         # Matching classifier layer - Only used for pretraining
         self.matching_output = torch.nn.Sequential(torch.nn.Linear(embedding_dim, out_ff_dim),
@@ -375,22 +403,21 @@ class DraftBert(torch.nn.Module):
                                                    Swish(),
                                                    torch.nn.Linear(out_ff_dim, 2))
         # Next hero prediction/Policy head
-        self.next_hero_output = torch.nn.Sequential(torch.nn.Linear(embedding_dim, out_ff_dim),
+        self.next_hero_output_hidden = torch.nn.Sequential(torch.nn.Linear(embedding_dim, out_ff_dim),
                                                    torch.nn.LayerNorm(out_ff_dim),
-                                                   Swish(),
-                                                   torch.nn.Linear(out_ff_dim, n_heros))
+                                                   Swish())
+        self.next_hero_out = torch.nn.Linear(out_ff_dim, n_heros)
+        self.next_hero_output = torch.nn.Sequential(self.next_hero_output_hidden, self.next_hero_out)
 
-        # TODO: """Add cluster prediction head - this is it but Connor wants to go over it. Actuallly I'm not so sure
-        #  how this should work. Maybe the win output and this head should share layers, since they'll be getting the
-        #  same input at the same time? In that case would we also train on cluster prediction loss during the agent
-        #  update step?
-        #  Or: they could be residual blocks. I.e., we train the cluster head and then the value head gets the hidden
-        #  layer as input and there's a residual block before predicting winner. That could work but it relies on the
-        #  clusters actually providing a good single. While we hope that's the case, we have no proof it is."""
-        self.cluster_output = torch.nn.Sequential(torch.nn.Linear(embedding_dim, out_ff_dim),
-                                                  torch.nn.LayerNorm(out_ff_dim),
-                                                  Swish(),
-                                                  torch.nn.LayerNorm(out_ff_dim, n_clusters))
+        self.cluster_output_hidden = torch.nn.Sequential(torch.nn.Linear(embedding_dim, out_ff_dim),
+                                                         torch.nn.LayerNorm(out_ff_dim),
+                                                         torch.nn.ReLU())
+        self.cluster_out = torch.nn.Linear(out_ff_dim, n_clusters)
+        self.cluster_output = torch.nn.Sequential(self.cluster_output_hidden, self.cluster_out)
+        self.friendly_cluster_update = torch.nn.Sequential(torch.nn.Linear(out_ff_dim, out_ff_dim),
+                                                           torch.nn.LayerNorm(out_ff_dim))
+        self.opponent_cluster_update = torch.nn.Sequential(torch.nn.Linear(out_ff_dim, out_ff_dim),
+                                                           torch.nn.LayerNorm(out_ff_dim))
 
         dictionary_size = n_heros
         self.hero_embeddings = torch.nn.Embedding(dictionary_size, embedding_dim, padding_idx=int(mask_idx))
@@ -403,6 +430,21 @@ class DraftBert(torch.nn.Module):
         self.le = None
         self.has_trained_on_all_pick = False
         self.has_trained_on_captains_mode = False
+
+    def get_cluster_predictions(self, src, mask):
+        if mask is not None:
+            src[mask] = self.mask_idx
+        first_to_pick_embeddings = src[:, [4, 5, 8, 9, 11], :].sum(1)
+        second_to_pick_embeddings = src[:, [16, 17, 20, 21, 23], :].sum(1)
+
+        first_to_pick_hidden = self.cluster_output_hidden(first_to_pick_embeddings)
+        second_to_pick_hidden = self.cluster_output_hidden(second_to_pick_embeddings)
+
+        first_to_pick_cluster = self.cluster_out(first_to_pick_hidden)
+        second_to_pick_cluster = self.cluster_out(second_to_pick_hidden)
+        return (first_to_pick_cluster, second_to_pick_cluster,
+                torch.cat([first_to_pick_hidden, second_to_pick_hidden]).view(2, first_to_pick_hidden.shape[0],
+                                                                              first_to_pick_hidden.shape[1]).permute(1, 0, 2))
 
     def embed_lineup(self, lineup):
         if isinstance(lineup, (list, np.ndarray)):
@@ -424,7 +466,7 @@ class DraftBert(torch.nn.Module):
 
         # First, we encode the src sequence into the latent hero representation
         if mask is not None:
-            src[mask] = torch.LongTensor([self.mask_idx] * src.shape[0])
+            src[mask] = self.mask_idx
         # if cuda:
         #     src = src.cuda()  # Set the masked values to the embedding pad idx
         src = self.hero_embeddings(src)
@@ -440,37 +482,31 @@ class DraftBert(torch.nn.Module):
         out = out.permute(1, 0, 2)
         return out
 
-    def get_masked_output(self, x):
-        return self.masked_output(x)
+    def get_masked_output(self, x, friendly_cluster_h=None, opponent_cluster_h=None):
+        if self.n_clusters is None:
+            return self.masked_output(x)
+        else:
+            masked_hero_h = self.masked_output_hidden(x)
+            masked_hero_h += friendly_cluster_h
+            masked_hero_h += opponent_cluster_h
+            masked_hero_h = F.relu(masked_hero_h)
+            return self.masked_output_out(masked_hero_h)
 
     def get_matching_output(self, x):
         return self.matching_output(x)
 
-    def get_next_hero_output(self, x):
-        return self.next_hero_output(x)
+    def get_next_hero_output(self, x, friendly_cluster_h=None, opponent_cluster_h=None):
+        if self.n_clusters is None:
+            return self.next_hero_output(x)
+        else:
+            next_hero_h = self.next_hero_output_hidden(x)
+            next_hero_h += friendly_cluster_h
+            next_hero_h += opponent_cluster_h
+            next_hero_h = F.relu(next_hero_h)
+            return self.next_hero_out(next_hero_h)
 
     def get_win_output(self, x):
         return self.win_output(x)
-
-    def _gen_random_masks(self, x: torch.LongTensor, pct=0.1):
-        """
-
-        :param x: shape (batch_size, sequence_length, 1)
-        :param pct:
-        :return:
-        """
-        n_masked_idx = int((x.shape[1] - 3) * pct)
-        mask = np.append([1] * n_masked_idx, [0] * (x.shape[1] - n_masked_idx - 3))
-        mask = np.array([np.random.permutation(mask) for _ in range(x.shape[0])])
-        zeros = np.zeros((x.shape[0], 1))
-        mask = np.hstack((zeros,
-                          mask[:, :5],
-                          zeros,
-                          mask[:, 5:],
-                          zeros))
-
-        mask = torch.BoolTensor(mask)
-        return mask
 
     def pretrain_all_pick(self, dataset: AllPickDataset, **train_kwargs):
         self.has_trained_on_all_pick = True
@@ -494,6 +530,8 @@ class DraftBert(torch.nn.Module):
         mask_loss = torch.nn.CrossEntropyLoss(reduction='mean')
         matching_loss = torch.nn.CrossEntropyLoss(reduction='mean')
         win_loss = torch.nn.CrossEntropyLoss(reduction='mean')
+        cluster_loss = torch.nn.CrossEntropyLoss(reduction='mean')
+
         for epoch in tqdm(range(epochs)):
             for i, batch in tqdm(enumerate(dataloader)):
                 opt.zero_grad()
@@ -502,6 +540,7 @@ class DraftBert(torch.nn.Module):
                 tgt_batch = copy.deepcopy(src_batch)
                 win_batch = batch[1]
                 mask_batch = batch[2]
+                cluster_batch = batch[3]
 
                 # Randomly shuffle the matchups for half the batch
                 is_correct_matchup = np.random.choice([0, 1], src_batch.shape[0])
@@ -513,8 +552,24 @@ class DraftBert(torch.nn.Module):
                     mask_batch = mask_batch.cuda()
 
                 out = self.forward(src_batch, mask_batch)  # -> shape (batch_size, sequence_length, embedding_dim)
+                if self.n_clusters is not None:
+                    cluster_out = self.get_cluster_predictions(out, mask_batch)
+
                 to_predict = out[mask_batch]
-                mask_pred = self.get_masked_output(to_predict)
+                if self.n_clusters is not None:
+                    picking_team = (mask_batch.argmax(-1) > 12).long()
+                    friendly_cluster_hs = cluster_out[2][range(batch_size), picking_team]
+                    opponent_cluster_hs = cluster_out[2][range(batch_size), 1 - picking_team]
+                else:
+                    friendly_cluster_hs = None
+                    opponent_cluster_hs = None
+                mask_pred = self.get_masked_output(to_predict, friendly_cluster_hs, opponent_cluster_hs)
+
+                if self.n_clusters is not None:
+                    cluster_pred = torch.cat((cluster_out[0], cluster_out[1]))
+                    cluster_tgt = torch.cat((cluster_batch[:, 0], cluster_batch[:, 1])).cuda()
+                    cluster_loss_batch = cluster_loss(cluster_pred, cluster_tgt)
+
                 mask_tgt_batch = tgt_batch[mask_batch]
                 if cuda:
                     mask_tgt_batch = mask_tgt_batch.cuda()
@@ -531,7 +586,12 @@ class DraftBert(torch.nn.Module):
                     win_batch = win_batch.cuda()
                 batch_win_loss = win_loss(win_pred, win_batch.squeeze())
 
-                batch_loss = (mask_batch_loss + is_correct_loss + batch_win_loss) / 3.
+                batch_loss = (mask_batch_loss + is_correct_loss + batch_win_loss)
+                if self.n_clusters is None:
+                    batch_loss /= 3
+                else:
+                    batch_loss += cluster_loss_batch
+                    batch_loss /= 4
                 batch_loss.backward()
                 opt.step()
 
@@ -542,16 +602,23 @@ class DraftBert(torch.nn.Module):
                     top_5_pred = np.argsort(mask_pred.detach().cpu().numpy(), axis=1)[:, -5:]
                     top_5_acc = np.array(
                         [t in p for t, p in zip(mask_tgt_batch.detach().cpu().numpy(), top_5_pred)]).astype(int).mean()
+
                     matching_acc = (is_correct_pred.detach().cpu().numpy().argmax(
                         1) == is_correct_matchup.detach().cpu().numpy()).astype(int).mean()
 
                     win_acc = (win_pred.detach().cpu().numpy().argmax(
                         1) == win_batch.squeeze().detach().cpu().numpy()).astype(int).mean()
 
+                    if self.n_clusters is not None:
+                        cluster_acc = (cluster_pred.detach().cpu().numpy().argmax(
+                        1) == cluster_tgt.squeeze().detach().cpu().numpy()).astype(int).mean()
+                    else:
+                        cluster_acc = -1
+
                     print(
                         f'Epoch: {epoch}, Step: {i}, Loss: {batch_loss}, Acc: {batch_acc}, Top 5 Acc: {top_5_acc},'
-                        f'Matching Acc: {matching_acc}, Win Acc: {win_acc}')
-            torch.save(self, f'../weights/checkpoints/draft_bert_pretrain__allpick_checkpoint_{epoch}.torch')
+                        f'Matching Acc: {matching_acc}, Win Acc: {win_acc}, Cluster Acc: {cluster_acc}')
+            torch.save(self, f'../weights/checkpoints/draft_bert_pretrain_allpick_checkpoint_{epoch}.torch')
 
     def train_from_selfplay(self, dataset: SelfPlayDataset, **train_kwargs):
         self.train()
