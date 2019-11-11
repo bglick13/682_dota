@@ -84,13 +84,13 @@ class DraftAgent(DummyAgent):
         """
         pass
 
-    def act(self, state, action=-1, num_reads=100):
+    def act(self, state, action=-1, num_reads=100, eps=0.1):
         if self.solver is None:
-            self.root = UCTNode(state, action)
+            self.root = UCTNode(state, action, eps=eps)
             # self.root.number_visits += 1
             self.solver = UCT(self.root, num_reads)
         else:
-            self.root = UCTNode(state, action, self.root)
+            self.root = UCTNode(state, action, self.root, eps=eps)
             # self.root.number_visits += 1
             self.solver.root = self.root
 
@@ -123,12 +123,21 @@ class DraftAgent(DummyAgent):
             print(e)
             print(s_in)
         if state.next_pick_index < 22:
-            probs = self.model.get_next_hero_output(encoded_s[:, state.draft_order[state.next_pick_index], :])
+            cluster_out = self.model.get_cluster_predictions(encoded_s)
+            if self.pick_first:
+                friendly_cluster_hs = cluster_out[2][0, 0, :]
+                opponent_cluster_hs = cluster_out[2][0, 1, :]
+
+            else:
+                friendly_cluster_hs = cluster_out[2][0, 1, :]
+                opponent_cluster_hs = cluster_out[2][0, 0, :]
+            probs = self.model.get_next_hero_output(encoded_s[:, state.draft_order[state.next_pick_index], :],
+                                                    friendly_cluster_hs, opponent_cluster_hs)
             probs = probs[0]
             legal_moves = state.get_legal_moves
             illegal_moves = np.ones(probs.shape, dtype=bool)
             illegal_moves[legal_moves] = False
-            probs[illegal_moves] = 0
+            probs[illegal_moves] = -100
             probs = F.softmax(probs, -1).detach().cpu().numpy()
         else:
             probs = None
