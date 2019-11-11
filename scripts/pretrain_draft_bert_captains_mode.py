@@ -6,7 +6,7 @@ import torch
 import os
 
 if __name__ == '__main__':
-    load_dataset = False
+    load_dataset = True
     col_format = ['R_Ban', 'D_Ban', 'R_Ban', 'D_Ban', 'R_Ban', 'D_Ban',
                   'R_Pick', 'D_Pick', 'D_Pick', 'R_Pick',
                   'R_Ban', 'D_Ban', 'R_Ban', 'D_Ban',

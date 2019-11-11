@@ -444,6 +444,8 @@ class DraftBert(torch.nn.Module):
         self.has_trained_on_captains_mode = False
 
     def get_cluster_predictions(self, src, mask=None):
+        if self.n_clusters is None:
+            return None, None, [None, None]
         if mask is not None:
             src[mask] = self.mask_idx
         first_to_pick_embeddings = src[:, [4, 5, 8, 9, 11], :].sum(1)

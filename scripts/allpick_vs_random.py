@@ -43,7 +43,7 @@ def do_rollout(model, hero_ids, port, verbose=False):
 
         if npi < 13:
             if player.pick_first:
-                action, uct_value, p, nn_value = player.act(state, action, num_reads=500)
+                action, uct_value, p, nn_value, leafs = player.act(state, action, num_reads=500, eps=0)
                 nn_values.append(nn_value)
                 uct_values.append(uct_value)
             else:
@@ -54,7 +54,7 @@ def do_rollout(model, hero_ids, port, verbose=False):
                 legal_moves = draft.state.get_legal_moves
                 action = np.random.choice(legal_moves)
             else:
-                action, uct_value, p, nn_value = player.act(state, action, num_reads=500)
+                action, uct_value, p, nn_value, leafs = player.act(state, action, num_reads=500, eps=0)
                 nn_values.append(nn_value)
                 uct_values.append(uct_value)
         all_states.append(state.game_state)
@@ -93,17 +93,17 @@ def do_rollout(model, hero_ids, port, verbose=False):
 
 
 if __name__ == '__main__':
-    model = torch.load('../weights/final_weights/draft_bert_pretrain_all_pick.torch',
+    model = torch.load('../weights/final_weights/draft_bert_pretrain_matching_with_clusters.torch',
                                   map_location=torch.device('cpu'))
     model.eval()
     model.requires_grad = False
 
     memory_size = 500000
     n_jobs = 4
-    n_games = 100
+    n_games = 200
     port = 13337
     verbose = True
-    hero_ids = pd.read_json('../const/draft_bert_hero_ids.json', orient='records')
+    hero_ids = pd.read_json('../const/draft_bert_clustering_hero_ids.json', orient='records')
 
     memory = deque(maxlen=memory_size)
     f = partial(do_rollout, model, hero_ids)
@@ -117,8 +117,9 @@ if __name__ == '__main__':
             results = pool.map_async(f, [port + i for i in range(n_jobs)]).get()
             memory.extend(results)
         times.append(time.time() - start_batch)
+        print(f'Finished batch in {times[-1]}s')
     end = time.time()
-    with open('../data/self_play/allpick_vs_random_memory_500_rollouts.pickle', 'wb') as f:
+    with open('../data/self_play/allpick_with_clusters_vs_random_memory_500_rollouts.pickle', 'wb') as f:
         pickle.dump(memory, f)
 
     print(f'Played {n_games} games using {n_jobs} jobs in 5 batches in {times} seconds each and total time was {end - start} seconds.')
