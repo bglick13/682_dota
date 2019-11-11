@@ -661,6 +661,7 @@ class DraftBert(torch.nn.Module):
         opt = torch.optim.Adam(self.parameters(), lr=lr)
         next_hero_loss = torch.nn.CrossEntropyLoss(reduction='mean')
         win_loss = torch.nn.CrossEntropyLoss(reduction='mean')
+
         for epoch in tqdm(range(epochs)):
             for i, batch in tqdm(enumerate(dataloader)):
                 opt.zero_grad()
@@ -712,11 +713,16 @@ class DraftBert(torch.nn.Module):
             torch.save(self, f'../weights/checkpoints/draft_bert_selfplay_checkpoint_{epoch}.torch')
 
     def pretrain_captains_mode(self, dataset: CaptainsModeDataset, **train_kwargs):
-        self.train()
         lr = train_kwargs.get('lr', 0.001)
         batch_size = train_kwargs.get('batch_size', 512)
         epochs = train_kwargs.get('epochs', 100)
         print_iter = train_kwargs.get('print_iter', 100)
+        test = train_kwargs.get('test', False)
+        if test:
+            self.eval()
+            self.requires_grad = False
+        else:
+            self.train()
 
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4)
 
@@ -724,10 +730,11 @@ class DraftBert(torch.nn.Module):
         next_hero_loss = torch.nn.CrossEntropyLoss(reduction='mean')
         win_loss = torch.nn.CrossEntropyLoss(reduction='mean')
         cluster_loss = torch.nn.CrossEntropyLoss(reduction='mean')
-
+        hist = dict(epoch=[], step=[], masked_hero_acc=[], top_5_acc=[], cluster_acc=[], win_acc=[], loss=[])
         for epoch in tqdm(range(epochs)):
             for i, batch in tqdm(enumerate(dataloader)):
-                opt.zero_grad()
+                if not test:
+                    opt.zero_grad()
 
                 src_batch = batch[0]
                 tgt_batch = batch[1]
@@ -739,8 +746,8 @@ class DraftBert(torch.nn.Module):
                 tgt_batch = tgt_batch.reshape(-1, 1)
                 win_batch = win_batch.reshape(-1, 1)
                 to_predict = to_predict.reshape(-1, 1)
-                picking_team = to_predict > 12
-                cluster_batch = cluster_batch.reshape(-1, 1).long()
+                picking_team = (to_predict > 12).squeeze().long()
+                cluster_batch = cluster_batch.reshape(-1, 2).long()
 
                 if cuda:
                     src_batch = src_batch.cuda()
@@ -775,8 +782,9 @@ class DraftBert(torch.nn.Module):
                 else:
                     batch_loss += cluster_loss_batch
                     batch_loss /= 3
-                batch_loss.backward()
-                opt.step()
+                if not test:
+                    batch_loss.backward()
+                    opt.step()
 
                 if i == 0 or (i + 1) % print_iter == 0:
                     batch_acc = (
@@ -789,9 +797,23 @@ class DraftBert(torch.nn.Module):
                     win_acc = (win_pred.detach().cpu().numpy().argmax(
                         1) == win_batch.squeeze().detach().cpu().numpy()).astype(int).mean()
 
+                    if self.n_clusters is not None:
+                        cluster_acc = (cluster_pred.detach().cpu().numpy().argmax(
+                        1) == cluster_tgt.squeeze().detach().cpu().numpy()).astype(int).mean()
+                    else:
+                        cluster_acc = -1
+                    hist['epoch'].append(epoch)
+                    hist['step'].append(i)
+                    hist['masked_hero_acc'].append(batch_acc)
+                    hist['cluster_acc'].append(cluster_acc)
+                    hist['win_acc'].append(win_acc)
+                    hist['top_5_acc'].append(top_5_acc)
+                    hist['loss'].append(batch_loss.detach().cpu().numpy())
                     print(
-                        f'Epoch: {epoch}, Step: {i}, Loss: {batch_loss}, Acc: {batch_acc}, Top 5 Acc: {top_5_acc}, Win Acc: {win_acc}')
+                        f'Epoch: {epoch}, Step: {i}, Loss: {batch_loss}, Acc: {batch_acc}, Top 5 Acc: {top_5_acc},'
+                        f'Win Acc: {win_acc}, Cluster Acc: {cluster_acc}')
             torch.save(self, f'../weights/checkpoints/draft_bert_pretrain_captains_mode_checkpoint_{epoch}.torch')
+        return hist
 
     def fit(self, src: torch.LongTensor, tgt: torch.LongTensor, task: DraftBertTasks, **train_kwargs):
         """

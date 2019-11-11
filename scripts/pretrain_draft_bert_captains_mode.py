@@ -36,5 +36,12 @@ if __name__ == '__main__':
 
     model.cuda()
 
-    model.pretrain_captains_mode(dataset, **{'epochs': int(1), 'lr': 1.0e-4, 'batch_size': 64})
+    train_hist = model.pretrain_captains_mode(dataset, **{'epochs': int(1), 'lr': 1.0e-4, 'batch_size': 64})
     torch.save(model, '../weights/final_weights/draft_bert_pretrain_captains_mode_with_clusters.torch')
+    with open('cm_pretrain_train_hist.pickle', 'wb') as f:
+        pickle.dump(train_hist, f)
+    test_hist = model.pretrain_captains_mode(dataset, **{'epochs': int(1), 'lr': 1.0e-4, 'batch_size': 64,
+                                                         'test': True, 'print_iter': 1})
+
+    with open('cm_pretrain_test_hist.pickle', 'wb') as f:
+        pickle.dump(test_hist, f)

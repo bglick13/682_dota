@@ -87,7 +87,7 @@ class UCT():
         node = self.root
         while node.is_expanded:
             node.number_visits += 1
-            node.total_value -= 1
+            # node.total_value -= 1
             move, value, values = node.best_child()
             if move is None:
                 node.is_terminal = True
