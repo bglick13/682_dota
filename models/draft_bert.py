@@ -35,20 +35,24 @@ def subsequent_mask(size):
 
 
 class SelfPlayDataset(Dataset):
-    def __init__(self, *memories, test_pct=0):
+    def __init__(self, *memories, test_pct=0, clusterizer=None, le=None):
         self.test_pct = test_pct
+        self.clusterizer = clusterizer
+        self.le = le
         draft_order = np.array([1, 13, 2, 14, 3, 15,
                                 4, 16, 5, 17,
                                 6, 18, 7, 19,
                                 8, 20, 9, 21,
                                 10, 22,
                                 11, 23])
-        draft_order -= 1
+        # draft_order -= 1
 
         all_outcomes = []
         all_actions = []
         all_states = []
         all_picks = []
+        p1_clusters = []
+        p2_clusters = []
         for memory in memories:
             for i, m in enumerate(memory):
                 v = m['all_values']
@@ -56,21 +60,37 @@ class SelfPlayDataset(Dataset):
                 if v[0] == -1:
                     continue
                 s = m['all_states']
-                a = m['all_actions']
+                if self.clusterizer is not None:
+                    p1_cluster = self.le.inverse_transform(s[-1][[4, 5, 8, 9, 11]].astype(int))
+                    p1_cluster = self.clusterizer.predict([p1_cluster])[0]
+
+                    p2_cluster = self.le.inverse_transform(s[-1][[16, 17, 20, 21, 23]].astype(int))
+                    p2_cluster = self.clusterizer.predict([p2_cluster])[0]
+                p1_uct = m['player1_uct_values']
+                p2_uct = m['player2_uct_values']
+                uct_values = np.append(p1_uct, p2_uct, 0)
                 _a = []
                 p = []
 
                 for pick in draft_order:
+                    subtract = 1 if pick < 13 else 2
+                    _a.append(uct_values[pick-subtract])
                     p.append(pick)
-                    _a.append(a[pick])
+
                 all_outcomes.extend(v[:-1])
                 all_actions.extend(_a)
                 all_states.extend(s[:-1])
                 all_picks.extend(p)
+                if self.clusterizer is not None:
+                    p1_clusters.extend([p1_cluster] * len(_a))
+                    p2_clusters.extend([p2_cluster] * len(_a))
         self.states = np.array(all_states)
         self.actions = np.array(all_actions)
         self.outcomes = np.array(all_outcomes)
         self.pick_indices = np.array(all_picks)
+        if self.clusterizer is not None:
+            self.p1_clusters = np.array(p1_clusters)
+            self.p2_clusters = np.array(p2_clusters)
 
         if self.test_pct > 0:
             self.test_idxs = np.random.choice(range(len(self.states)), int(len(self.states) * self.test_pct),
@@ -87,7 +107,13 @@ class SelfPlayDataset(Dataset):
         a = self.actions[item]
         v = self.outcomes[item]
         to_predict = self.pick_indices[item]
-        return s, a, v, to_predict
+        if self.clusterizer is not None:
+            p1_cluster = self.p1_clusters[item]
+            p2_cluster = self.p2_clusters[item]
+        else:
+            p1_cluster = None
+            p2_cluster = None
+        return s, a, v, to_predict, p1_cluster, p2_cluster
 
     def __len__(self):
         return len(self.states)
@@ -656,60 +682,98 @@ class DraftBert(torch.nn.Module):
         batch_size = train_kwargs.get('batch_size', 512)
         epochs = train_kwargs.get('epochs', 100)
         print_iter = train_kwargs.get('print_iter', 100)
-
+        max_steps = train_kwargs.get('steps', np.inf)
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4)
         opt = torch.optim.Adam(self.parameters(), lr=lr)
-        next_hero_loss = torch.nn.CrossEntropyLoss(reduction='mean')
-        win_loss = torch.nn.CrossEntropyLoss(reduction='mean')
 
+        next_hero_loss = torch.nn.KLDivLoss(reduction='mean')
+        win_loss = torch.nn.CrossEntropyLoss(reduction='mean')
+        cluster_loss = torch.nn.CrossEntropyLoss(reduction='mean')
+
+        total_steps = 0
         for epoch in tqdm(range(epochs)):
             for i, batch in tqdm(enumerate(dataloader)):
+                if total_steps > max_steps:
+                    break
                 opt.zero_grad()
 
                 state_batch = batch[0]
                 action_batch = batch[1]
                 win_batch = batch[2]
                 to_predict = batch[3]
-                cluster_batch = batch[4]
+                p1_cluster_batch = batch[4]
+                p2_cluster_batch = batch[5]
 
                 state_batch = torch.LongTensor(state_batch.reshape(-1, 25).long())
-                action_batch = torch.LongTensor(action_batch.reshape(-1, 1).long())
+                action_batch = torch.FloatTensor(action_batch.float())
                 win_batch = torch.LongTensor(win_batch.reshape(-1, 1).long())
                 to_predict = to_predict.reshape(-1, 1).long()
-                cluster_batch = cluster_batch.reshape(-1, 1).long()
+
+                # 1 if Dire, else Radiant
+                picking_team = (to_predict > 12).squeeze().long()
+                p1_cluster_batch = p1_cluster_batch.reshape(-1, 1).long()
+                p2_cluster_batch = p2_cluster_batch.reshape(-1, 1).long()
 
                 if cuda:
                     state_batch = state_batch.cuda()
                     action_batch = action_batch.cuda()
                     win_batch = win_batch.cuda()
-                    cluster_batch = cluster_batch.cuda()
+                    p1_cluster_batch = p1_cluster_batch.cuda()
+                    p2_cluster_batch = p2_cluster_batch.cuda()
 
                 out = self.forward(state_batch)  # -> shape (batch_size, sequence_length, embedding_dim)
+                if self.n_clusters is not None:
+                    cluster_out = self.get_cluster_predictions(out)
+                    # [batch_size, [Radiant, Dire], hidden_size]
+                    friendly_cluster_hs = cluster_out[2][range(state_batch.shape[0]), picking_team]
+                    opponent_cluster_hs = cluster_out[2][range(state_batch.shape[0]), 1 - picking_team]
+                    cluster_pred = torch.cat((cluster_out[0], cluster_out[1]))
+                    cluster_tgt = torch.cat((p1_cluster_batch, p2_cluster_batch)).cuda()
+                    cluster_loss_batch = cluster_loss(cluster_pred, cluster_tgt.squeeze())
+                else:
+                    friendly_cluster_hs = None
+                    opponent_cluster_hs = None
                 to_predict = out[range(len(out)), to_predict.squeeze()]
-                mask_pred = self.get_masked_output(to_predict)
+                mask_pred = self.get_masked_output(to_predict, friendly_cluster_hs, opponent_cluster_hs)
 
-                mask_batch_loss = next_hero_loss(mask_pred, action_batch.squeeze())
+                mask_pred = F.log_softmax(mask_pred, -1)
+                mask_tgt = F.softmax(action_batch, -1)
+                mask_batch_loss = next_hero_loss(mask_pred, mask_tgt)
 
                 win_pred = self.get_win_output(out[:, 0, :])
                 batch_win_loss = win_loss(win_pred, win_batch.squeeze())
 
-                batch_loss = (mask_batch_loss + batch_win_loss) / 2.
+                batch_loss = (mask_batch_loss + batch_win_loss)
+                if self.n_clusters is not None:
+                    batch_loss += cluster_loss_batch
+                    batch_loss /= 3
+                else:
+                    batch_loss /= 2
                 batch_loss.backward()
                 opt.step()
 
                 if i == 0 or (i + 1) % print_iter == 0:
                     batch_acc = (
-                            mask_pred.detach().cpu().numpy().argmax(1) == action_batch.detach().cpu().numpy()).astype(
+                            mask_pred.detach().cpu().numpy().argmax(1) == action_batch.detach().cpu().numpy().argmax(1)).astype(
                         int).mean()
                     top_5_pred = np.argsort(mask_pred.detach().cpu().numpy(), axis=1)[:, -5:]
+                    top_5_true = np.argsort(action_batch.detach().cpu().numpy(), axis=1)[:, -5:]
                     top_5_acc = np.array(
-                        [t in p for t, p in zip(action_batch.detach().cpu().numpy(), top_5_pred)]).astype(int).mean()
+                        [t in p for t, p in zip(top_5_true, top_5_pred)]).astype(int).mean()
 
                     win_acc = (win_pred.detach().cpu().numpy().argmax(
                         1) == win_batch.squeeze().detach().cpu().numpy()).astype(int).mean()
 
+                    if self.n_clusters is not None:
+                        cluster_acc = (cluster_pred.detach().cpu().numpy().argmax(
+                        1) == cluster_tgt.squeeze().detach().cpu().numpy()).astype(int).mean()
+                    else:
+                        cluster_acc = -1
+
                     print(
-                        f'Epoch: {epoch}, Step: {i}, Loss: {batch_loss}, Acc: {batch_acc}, Top 5 Acc: {top_5_acc}, Win Acc: {win_acc}')
+                        f'Epoch: {epoch}, Step: {i}, Loss: {batch_loss}, Acc: {batch_acc}, Top 5 Acc: {top_5_acc}, '
+                        f'Win Acc: {win_acc}, Cluster Acc: {cluster_acc}')
+                total_steps += 1
             torch.save(self, f'../weights/checkpoints/draft_bert_selfplay_checkpoint_{epoch}.torch')
 
     def pretrain_captains_mode(self, dataset: CaptainsModeDataset, **train_kwargs):

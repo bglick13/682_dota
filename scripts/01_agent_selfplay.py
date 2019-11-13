@@ -32,8 +32,6 @@ def do_rollout(model, hero_ids, num_reads, port, verbose=False, eps=0.1):
     player2_nn_values = []
     player1_uct_values = []
     player2_uct_values = []
-    player1_uct_rollout_leafs = []
-    player2_uct_rollout_leafs = []
 
     while True:
         try:
@@ -47,12 +45,12 @@ def do_rollout(model, hero_ids, num_reads, port, verbose=False, eps=0.1):
             action, uct_value, p, nn_value, leafs = player1.act(state, action, num_reads=num_reads, eps=eps)
             player1_nn_values.append(nn_value)
             player1_uct_values.append(uct_value)
-            player1_uct_rollout_leafs.append(leafs)
+            # player1_uct_rollout_leafs.append(leafs)
         else:
             action, uct_value, p, nn_value, leafs = player2.act(state, action, num_reads=num_reads, eps=eps)
             player2_nn_values.append(nn_value)
             player2_uct_values.append(uct_value)
-            player2_uct_rollout_leafs.append(leafs)
+            # player2_uct_rollout_leafs.append(leafs)
 
         all_states.append(state.game_state)
         all_actions.append(action)
@@ -76,8 +74,8 @@ def do_rollout(model, hero_ids, num_reads, port, verbose=False, eps=0.1):
     del model
     empty_cache()
     return dict(all_actions=all_actions, all_states=all_states, all_values=all_values, player1_nn_values=player1_nn_values,
-                player2_nn_values=player2_nn_values, player1_uct_values=player1_uct_values, player2_uct_values=player2_uct_values,
-                player1_leafs=player1_uct_rollout_leafs, player2_leafs=player2_uct_rollout_leafs)
+                player2_nn_values=player2_nn_values, player1_uct_values=player1_uct_values,
+                player2_uct_values=player2_uct_values,)
 
 
 if __name__ == '__main__':
