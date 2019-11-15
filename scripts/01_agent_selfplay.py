@@ -43,6 +43,8 @@ def do_rollout(model, hero_ids, num_reads, port, verbose=False, eps=0.1):
 
         if npi < 13:
             action, uct_value, p, nn_value, leafs = player1.act(state, action, num_reads=num_reads, eps=eps)
+            if len(all_actions) == 6:
+                action = model.le.transform([129])[0]
             player1_nn_values.append(nn_value)
             player1_uct_values.append(uct_value)
             # player1_uct_rollout_leafs.append(leafs)
@@ -87,8 +89,8 @@ if __name__ == '__main__':
     model.eval()
     model.requires_grad = False
     memory_size = 500000
-    n_jobs = 4
-    n_games = 500
+    n_jobs = 1
+    n_games = 1
     port = 13337
     verbose = True
     hero_ids = pd.read_json('../const/draft_bert_hero_ids.json', orient='records')
