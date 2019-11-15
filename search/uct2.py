@@ -17,7 +17,8 @@ class UCTNode(object):
         self.is_expanded = False
         self.is_terminal = False
         self.parent = parent
-        # self.legal_moves = self.state.get_legal_moves
+        self.number_visits = 0
+        self.total_value = 0.0
         self.children = {}
         self.child_priors = np.zeros([len(self.state.heros)], dtype=np.float32)
         self.child_total_value = np.zeros([len(self.state.heros)], dtype=np.float32)
@@ -26,27 +27,27 @@ class UCTNode(object):
     def is_leaf(self):
         return len(self.edges) == 0
 
-    @property
-    def number_visits(self):
-        if self.parent is None:
-            return 0
-        return self.parent.child_number_visits[self.move]
+    # @property
+    # def number_visits(self):
+    #     if self.parent is None:
+    #         return 0
+    #     return self.parent.child_number_visits[self.move]
     
-    @number_visits.setter
-    def number_visits(self, value):
-        if self.parent is not None:
-            self.parent.child_number_visits[self.move] = value
+    # @number_visits.setter
+    # def number_visits(self, value):
+    #     if self.parent is not None:
+    #         self.parent.child_number_visits[self.move] = value
 
-    @property
-    def total_value(self):
-        if self.parent is None:
-            return 0
-        return self.parent.child_total_value[self.move]
+    # @property
+    # def total_value(self):
+    #     if self.parent is None:
+    #         return 0
+    #     return self.parent.child_total_value[self.move]
 
-    @total_value.setter
-    def total_value(self, value):
-        if self.parent is not None:
-            self.parent.child_total_value[self.move] = value
+    # @total_value.setter
+    # def total_value(self, value):
+    #     if self.parent is not None:
+    #         self.parent.child_total_value[self.move] = value
 
     def child_Q(self):
         return self.child_total_value / (1 + self.child_number_visits)
@@ -87,7 +88,8 @@ class UCT():
         node = self.root
         while node.is_expanded:
             node.number_visits += 1
-            # node.total_value -= 1
+            if node.parent is not None:
+                node.parent.child_number_visits[node.move] += 1
             move, value, values = node.best_child()
             if move is None:
                 node.is_terminal = True
@@ -99,9 +101,15 @@ class UCT():
         return node
 
     def backup(self, node, value_estimate):
+        node.number_visits += 1
+        node.total_value += value_estimate
+        if node.parent is not None:
+            node.parent.child_number_visits[node.move] += 1
+            node.parent.child_total_value[node.move] += value_estimate
+            node = node.parent
         while node.parent is not None:
-            node.number_visits += 1
-            node.total_value += value_estimate #*self.state.to_play
+            node.total_value += value_estimate
+            node.parent.child_total_value[node.move] += value_estimate
             node = node.parent
 
 
