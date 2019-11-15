@@ -84,7 +84,7 @@ class DraftAgent(DummyAgent):
         """
         pass
 
-    def act(self, state, action=-1, num_reads=100, eps=0.1):
+    def act(self, state, action=-1, num_reads=100, eps=0.1, deterministic=False):
         if self.solver is None:
             self.root = UCTNode(state, action, eps=eps)
             # self.root.number_visits += 1
@@ -101,6 +101,8 @@ class DraftAgent(DummyAgent):
         next_state = state.take_action(action)
         nn_value = self.get_preds(next_state)[1]
         p = F.softmax(FloatTensor(values), -1).numpy()
+        if not deterministic:
+            action = np.random.choice(range(len(values)), p=p)
         return action, values, p, nn_value, leafs
 
     def get_preds(self, leaf: Union[UCTNode, DraftState]):

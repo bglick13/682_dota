@@ -1,7 +1,6 @@
 import collections
 import numpy as np
 
-
 class DummyNode(object):
     def __init__(self):
         self.parent = None
@@ -53,7 +52,7 @@ class UCTNode(object):
         return self.child_total_value / (1 + self.child_number_visits)
 
     def child_U(self): # 1.25 is the c_puct term that many papers use. It controls exploration.
-        return 1.25 * self.child_priors * np.sqrt(np.log(self.number_visits + 1)/(1 + self.child_number_visits))
+        return 10 * self.child_priors * np.sqrt(np.log(self.number_visits + 1)/(1 + self.child_number_visits))
 
     def best_child(self):
         if self.state.done:
@@ -64,9 +63,9 @@ class UCTNode(object):
         illegal_moves[legal_moves] = False
         values[illegal_moves] = -np.inf
         best = np.random.choice(np.flatnonzero(np.isclose(values, values.max())))  # This should randomly draw from tied best
-        if np.random.uniform() <= self.eps:
-            np.random.seed()
-            best = np.random.choice(np.flatnonzero([values != -np.inf]))
+        # if np.random.uniform() <= self.eps:
+        #     np.random.seed()
+        #     best = np.random.choice(np.flatnonzero([values != -np.inf]))
         return best, values[best], values
 
     def expand(self, child_priors):
@@ -86,17 +85,20 @@ class UCT():
 
     def rollout(self, node=None):
         node = self.root
+        # depth = 0
         while node.is_expanded:
             node.number_visits += 1
             if node.parent is not None:
                 node.parent.child_number_visits[node.move] += 1
             move, value, values = node.best_child()
+            # print(f'Depth: {depth}, Q: {node.child_Q()[move]}, U: {node.child_U()[move]}')
             if move is None:
                 node.is_terminal = True
                 break
             if move not in node.children:
                 node.add_child(move)
             node = node.children[move]
+            # depth += 1
 
         return node
 
