@@ -8,7 +8,7 @@ from models.draft_bert import DraftBert, SelfPlayDataset
 
 def run(memory_file, ):
     BATCH_SIZE = 1024
-    N_STEPS = 100
+    N_STEPS = 1000
 
     mems = []
     for mem in os.listdir(memory_file):
