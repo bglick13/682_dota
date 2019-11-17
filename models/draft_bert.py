@@ -705,7 +705,7 @@ class DraftBert(torch.nn.Module):
                 p2_cluster_batch = batch[5]
 
                 state_batch = torch.LongTensor(state_batch.reshape(-1, 25).long())
-                action_batch = torch.LongTensor(action_batch.long())
+                action_batch = torch.LongTensor(action_batch.argmax(-1).long())
                 win_batch = torch.LongTensor(win_batch.reshape(-1, 1).long())
                 to_predict = to_predict.reshape(-1, 1).long()
 
@@ -754,10 +754,10 @@ class DraftBert(torch.nn.Module):
 
                 if i == 0 or (i + 1) % print_iter == 0:
                     batch_acc = (
-                            mask_pred.detach().cpu().numpy().argmax(1) == action_batch.detach().cpu().numpy().argmax(1)).astype(
+                            mask_pred.detach().cpu().numpy().argmax(1) == action_batch.detach().cpu().numpy()).astype(
                         int).mean()
                     top_5_pred = np.argsort(mask_pred.detach().cpu().numpy(), axis=1)[:, -5:]
-                    top_5_true = np.argsort(action_batch.detach().cpu().numpy(), axis=1)[:, -5:]
+                    top_5_true = action_batch.detach().cpu().numpy()
                     top_5_acc = np.array(
                         [t in p for t, p in zip(top_5_true, top_5_pred)]).astype(int).mean()
 
@@ -771,7 +771,7 @@ class DraftBert(torch.nn.Module):
                         cluster_acc = -1
 
                     print(
-                        f'Epoch: {epoch}, Step: {i}, Loss: {batch_loss}, Acc: {batch_acc}, Top 5 Acc: {top_5_acc}, '
+                        f'Epoch: {epoch}, Step: {i}, Loss: {batch_loss} (Hero: {mask_batch_loss}, Cluster: {cluster_loss_batch}, Win: {batch_win_loss}), Acc: {batch_acc}, Top 5 Acc: {top_5_acc}, '
                         f'Win Acc: {win_acc}, Cluster Acc: {cluster_acc}')
                 total_steps += 1
             torch.save(self, f'../weights/checkpoints/draft_bert_selfplay_checkpoint_{epoch}.torch')
