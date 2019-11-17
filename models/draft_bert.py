@@ -686,7 +686,7 @@ class DraftBert(torch.nn.Module):
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4)
         opt = torch.optim.Adam(self.parameters(), lr=lr)
 
-        next_hero_loss = torch.nn.KLDivLoss(reduction='mean')
+        next_hero_loss = torch.nn.CrossEntropyLoss(reduction='mean')
         win_loss = torch.nn.CrossEntropyLoss(reduction='mean')
         cluster_loss = torch.nn.CrossEntropyLoss(reduction='mean')
 
@@ -705,7 +705,7 @@ class DraftBert(torch.nn.Module):
                 p2_cluster_batch = batch[5]
 
                 state_batch = torch.LongTensor(state_batch.reshape(-1, 25).long())
-                action_batch = torch.FloatTensor(action_batch.float())
+                action_batch = torch.LongTensor(action_batch.long())
                 win_batch = torch.LongTensor(win_batch.reshape(-1, 1).long())
                 to_predict = to_predict.reshape(-1, 1).long()
 
@@ -734,11 +734,11 @@ class DraftBert(torch.nn.Module):
                     friendly_cluster_hs = None
                     opponent_cluster_hs = None
                 to_predict = out[range(len(out)), to_predict.squeeze()]
-                mask_pred = self.get_masked_output(to_predict, friendly_cluster_hs, opponent_cluster_hs)
+                mask_pred = self.get_next_hero_output(to_predict, friendly_cluster_hs, opponent_cluster_hs)
 
-                mask_pred = F.log_softmax(mask_pred, -1)
-                mask_tgt = F.softmax(action_batch, -1)
-                mask_batch_loss = next_hero_loss(mask_pred, mask_tgt)
+                # mask_pred = F.log_softmax(mask_pred, -1)
+                # mask_tgt = F.softmax(action_batch, -1)
+                mask_batch_loss = next_hero_loss(mask_pred, action_batch.squeeze())
 
                 win_pred = self.get_win_output(out[:, 0, :])
                 batch_win_loss = win_loss(win_pred, win_batch.squeeze())
@@ -833,7 +833,7 @@ class DraftBert(torch.nn.Module):
 
                 to_predict = out[range(len(out)), to_predict.squeeze()]
 
-                mask_pred = self.get_masked_output(to_predict, friendly_cluster_hs, opponent_cluster_hs)
+                mask_pred = self.get_next_hero_output(to_predict, friendly_cluster_hs, opponent_cluster_hs)
 
                 mask_batch_loss = next_hero_loss(mask_pred, tgt_batch.squeeze())
 
