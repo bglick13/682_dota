@@ -7,7 +7,7 @@ from models.draft_bert import DraftBert, SelfPlayDataset
 
 
 def run(memory_file, ):
-    BATCH_SIZE = 1024
+    BATCH_SIZE = 2048
     N_STEPS = 1000
 
     mems = []
@@ -17,8 +17,7 @@ def run(memory_file, ):
                 mem = pickle.load(f)
             mems.append(mem)
 
-    model: DraftBert = load('../weights/final_weights/draft_bert_pretrain_captains_mode_with_clusters.torch',
-                            map_location=device('cpu'))
+    model: DraftBert = load('../weights/final_weights/draft_bert_pretrain_captains_mode_with_clusters.torch')
     with open('../weights/kmeans.pickle', 'rb') as f:
         clusterizer = pickle.load(f)
 
@@ -29,6 +28,8 @@ def run(memory_file, ):
 
     model.cuda()
     model.train()
+    model.matching_output.requires_grad = False
+    model.masked_output.requires_grad = False
     model.train_from_selfplay(dataset, epochs=EPOCHS, batch_size=BATCH_SIZE, steps=N_STEPS, print_iter=10)
     save(model, os.path.join(memory_file, 'new_model.torch'))
 
