@@ -93,7 +93,7 @@ def do_rollout(model, hero_ids, port, verbose=False):
 
 
 if __name__ == '__main__':
-    model = torch.load('../data/self_play/memories_for_train_1/new_model.torch', map_location=torch.device('cpu'))
+    model = torch.load('../data/self_play/memories_for_train_1/train_from_selfplay_1.torch', map_location=torch.device('cpu'))
     model.eval()
     model.requires_grad = False
 
