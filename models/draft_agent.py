@@ -84,24 +84,33 @@ class DraftAgent(DummyAgent):
         """
         pass
 
-    def act(self, state, action=-1, num_reads=100, eps=0.1, deterministic=False):
-        if self.solver is None:
-            self.root = UCTNode(state, action, eps=eps)
-            # self.root.number_visits += 1
-            self.solver = UCT(self.root, num_reads)
-        else:
-            self.root = UCTNode(state, action, self.root, eps=eps)
-            # self.root.number_visits += 1
-            self.solver.root = self.root
-
+    def act(self, state, action=-1, num_reads=100, eps=0.1, deterministic=False, greedy=False):
         leafs = []
-        for _ in range(num_reads):
-            leafs.append(self.simulate())
-        action, value, values = self.root.best_child()
+        action, value, values = None, None, None
+
+        if greedy:
+            probs, _, _ = self.get_preds(state)
+            action = np.argmax(probs)
+        else:
+            if self.solver is None:
+                self.root = UCTNode(state, action, eps=eps)
+                # self.root.number_visits += 1
+                self.solver = UCT(self.root, num_reads)
+            else:
+                self.root = UCTNode(state, action, self.root, eps=eps)
+                # self.root.number_visits += 1
+                self.solver.root = self.root
+
+            leafs = []
+            for _ in range(num_reads):
+                leafs.append(self.simulate())
+            action, value, values = self.root.best_child()
+            
         next_state = state.take_action(action)
         nn_value = self.get_preds(next_state)[1]
         p = F.softmax(FloatTensor(values), -1).numpy()
         if not deterministic:
+            np.random.seed()
             action = np.random.choice(range(len(values)), p=p)
         return action, values, p, nn_value, leafs
 
