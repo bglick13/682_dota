@@ -17,3 +17,5 @@ secret.py
 
 *.png
 /rollout_results/
+
+*.zip

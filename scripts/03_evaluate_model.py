@@ -89,12 +89,12 @@ if __name__ == '__main__':
     file_name = 'eval1'
     if file_name is None:
         file_name = f'selfplay_{time.time()}'
-    old_model: DraftBert = load('../weights/final_weights/draft_bert_pretrain_captains_mode_with_clusters.torch',
+    old_model: DraftBert = load('../weights/final_weights/train_from_selfplay_1.torch',
                             map_location=device('cpu'))
     old_model.eval()
     old_model.requires_grad = False
 
-    new_model: DraftBert = load('../data/self_play/memories_for_train_1/new_model.torch',
+    new_model: DraftBert = load('../data/self_play/memories_for_train_2/new_model.torch',
                             map_location=device('cpu'))
     new_model.eval()
     new_model.requires_grad = False
