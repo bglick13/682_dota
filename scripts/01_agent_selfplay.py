@@ -84,7 +84,7 @@ if __name__ == '__main__':
     file_name = None
     if file_name is None:
         file_name = f'selfplay_{time.time()}'
-    model: DraftBert = load('../weights/final_weights/draft_bert_pretrain_captains_mode_with_clusters.torch',
+    model: DraftBert = load('../weights/final_weights/train_from_selfplay_1.torch',
                             map_location=device('cpu'))
     model.eval()
     model.requires_grad = False

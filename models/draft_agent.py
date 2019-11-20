@@ -6,6 +6,8 @@ from typing import Union
 from draft.draft_env import DraftState
 from search.uct2 import UCTNode, UCT
 from torch.functional import F
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 class DummyAgent(nn.Module):
@@ -107,14 +109,14 @@ class DraftAgent(DummyAgent):
             action, value, values = self.root.best_child()
             
         next_state = state.take_action(action)
-        nn_value = self.get_preds(next_state)[1]
+        nn_value = self.get_preds(next_state, plot_attn=True)[1]
         p = F.softmax(FloatTensor(values), -1).numpy()
         if not deterministic:
             np.random.seed()
             action = np.random.choice(range(len(values)), p=p)
         return action, values, p, nn_value, leafs
 
-    def get_preds(self, leaf: Union[UCTNode, DraftState]):
+    def get_preds(self, leaf: Union[UCTNode, DraftState], plot_attn=False):
         if isinstance(leaf, UCTNode):
             state = leaf.state
         else:
@@ -130,9 +132,17 @@ class DraftAgent(DummyAgent):
 
         try:
             encoded_s = self.model.forward(s_in)
+
         except Exception as e:
             print(e)
             print(s_in)
+        # if plot_attn:
+        #     attn_maps = self.model.get_attn_maps(s_in)
+        #     for i, am in enumerate(attn_maps):
+        #         fig, ax = plt.subplots(figsize=(16, 16))
+        #         fig = sns.heatmap(am[1].squeeze().detach().numpy(), ax=ax)
+        #         turn = (s_in > 2).sum()
+        #         plt.savefig(f'heatmap_layer_{i}_turn_{turn}_player_{self.pick_first}.png')
         if state.next_pick_index < 22:
             cluster_out = self.model.get_cluster_predictions(encoded_s)
             if self.pick_first:

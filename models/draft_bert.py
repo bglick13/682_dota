@@ -495,6 +495,23 @@ class DraftBert(torch.nn.Module):
             lineup = lineup.cuda()
         return self.hero_embeddings(lineup)
 
+    def get_attn_maps(self, src: torch.LongTensor, mask: torch.BoolTensor = None):
+        if mask is not None:
+            src[mask] = self.mask_idx
+        src = self.hero_embeddings(src)
+        src = src + np.sqrt(self.embedding_dim)
+        src = self.pe(src)
+
+        # Encoder expects shape (seq_length, batch_size, embedding_dim)
+        src = src.permute(1, 0, 2)
+        # Then we pass it through the encoder stack
+        # out = self.encoder(src, src_key_padding_mask=mask, src_mask)
+        attn_maps = []
+        for i in range(self.encoder.num_layers):
+            output = self.encoder.layers[i].self_attn(src, src, src, need_weights=True)
+            attn_maps.append(output)
+        return attn_maps
+
     def forward(self, src: torch.LongTensor, mask: torch.BoolTensor = None):
         """
 
