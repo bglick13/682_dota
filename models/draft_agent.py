@@ -6,6 +6,8 @@ from typing import Union
 from draft.draft_env import DraftState
 from search.uct2 import UCTNode, UCT
 from torch.functional import F
+from torch.optim import Adam
+from torch.nn import CrossEntropyLoss
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -86,13 +88,13 @@ class DraftAgent(DummyAgent):
         """
         pass
 
-    def act(self, state, action=-1, num_reads=100, eps=0.1, deterministic=False):
+    def act(self, state, action=-1, num_reads=100, deterministic=False, use_clusters=True):
         if self.solver is None:
-            self.root = UCTNode(state, action, eps=eps)
+            self.root = UCTNode(state, action)
             # self.root.number_visits += 1
             self.solver = UCT(self.root, num_reads)
         else:
-            self.root = UCTNode(state, action, self.root, eps=eps)
+            self.root = UCTNode(state, action, self.root)
             # self.root.number_visits += 1
             self.solver.root = self.root
 
@@ -100,14 +102,20 @@ class DraftAgent(DummyAgent):
         for _ in range(num_reads):
             leafs.append(self.simulate())
         action, value, values = self.root.best_child()
+        # nn_probs, nn_value, _ = self.get_preds(state, plot_attn=True, use_clusters=use_clusters)
+
         next_state = state.take_action(action)
-        nn_value = self.get_preds(next_state, plot_attn=True)[1]
+        nn_probs, nn_value, _ = self.get_preds(next_state, plot_attn=True, use_clusters=use_clusters)
         p = F.softmax(FloatTensor(values), -1).numpy()
         if not deterministic:
             action = np.random.choice(range(len(values)), p=p)
+        else:
+            top5 = values.argsort()[-5:]
+            _p = F.softmax(FloatTensor(values[top5]), -1).numpy()
+            action = np.random.choice(top5, p=_p)
         return action, values, p, nn_value, leafs
 
-    def get_preds(self, leaf: Union[UCTNode, DraftState], plot_attn=False):
+    def get_preds(self, leaf: Union[UCTNode, DraftState], plot_attn=False, target_cluster=None, use_clusters=True):
         if isinstance(leaf, UCTNode):
             state = leaf.state
         else:
@@ -143,6 +151,20 @@ class DraftAgent(DummyAgent):
             else:
                 friendly_cluster_hs = cluster_out[2][0, 1, :]
                 opponent_cluster_hs = cluster_out[2][0, 0, :]
+
+            # This should work to force the agent to attempt to be in a certain cluster
+            if target_cluster is not None:
+                opt = Adam(friendly_cluster_hs)
+                loss_func = CrossEntropyLoss()
+                for i in range(100):
+                    _cluster_pred = self.model.cluster_output(friendly_cluster_hs)
+                    loss = loss_func(_cluster_pred, LongTensor([target_cluster]))
+                    loss.backward()
+                    opt.step()
+
+            if not use_clusters:
+                friendly_cluster_hs = None
+                opponent_cluster_hs = None
             probs = self.model.get_next_hero_output(encoded_s[:, state.draft_order[state.next_pick_index], :],
                                                     friendly_cluster_hs, opponent_cluster_hs)
             probs = probs[0]

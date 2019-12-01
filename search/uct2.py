@@ -9,10 +9,9 @@ class DummyNode(object):
 
 
 class UCTNode(object):
-    def __init__(self, state, move, parent=None, eps=0.1):
+    def __init__(self, state, move, parent=None):
         self.state = state
         self.move = move
-        self.eps = eps
         self.is_expanded = False
         self.is_terminal = False
         self.parent = parent
@@ -52,7 +51,7 @@ class UCTNode(object):
         return self.child_total_value / (1 + self.child_number_visits)
 
     def child_U(self): # 1.25 is the c_puct term that many papers use. It controls exploration.
-        return 10 * self.child_priors * np.sqrt(np.log(self.number_visits + 1)/(1 + self.child_number_visits))
+        return 5 * self.child_priors * np.sqrt(np.log(self.number_visits + 1)/(1 + self.child_number_visits))
 
     def best_child(self):
         if self.state.done:

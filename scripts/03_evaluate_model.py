@@ -37,17 +37,17 @@ def do_rollout(old_model, new_model, hero_ids, port, verbose=False):
 
         if npi < 13:
             if player_1_pick_first:
-                action, uct_value, p, nn_value, _ = player1.act(state, action, num_reads=500, eps=0, deterministic=True)
+                action, uct_value, p, nn_value, _ = player1.act(state, action, num_reads=500, deterministic=True)
                 player1_values.append(nn_value)
             else:
-                action, uct_value, p, nn_value, _ = player2.act(state, action, num_reads=500, eps=0, deterministic=True)
+                action, uct_value, p, nn_value, _ = player2.act(state, action, num_reads=500, deterministic=True)
                 player2_values.append(nn_value)
         else:
             if player_1_pick_first:
-                action, uct_value, p, nn_value, _ = player2.act(state, action, num_reads=500, eps=0, deterministic=True)
+                action, uct_value, p, nn_value, _ = player2.act(state, action, num_reads=500, deterministic=True)
                 player2_values.append(nn_value)
             else:
-                action, uct_value, p, nn_value, _ = player1.act(state, action, num_reads=500, eps=0, deterministic=True)
+                action, uct_value, p, nn_value, _ = player1.act(state, action, num_reads=500, deterministic=True)
                 player1_values.append(nn_value)
 
         all_states.append(state.game_state)
@@ -89,12 +89,12 @@ if __name__ == '__main__':
     file_name = 'eval1'
     if file_name is None:
         file_name = f'selfplay_{time.time()}'
-    old_model: DraftBert = load('../weights/final_weights/train_from_selfplay_1.torch',
+    old_model: DraftBert = load('../weights/final_weights/train_from_selfplay_2.torch',
                             map_location=device('cpu'))
     old_model.eval()
     old_model.requires_grad = False
 
-    new_model: DraftBert = load('../data/self_play/memories_for_train_2/new_model.torch',
+    new_model: DraftBert = load('../data/self_play/memories_for_train_3/new_model.torch',
                             map_location=device('cpu'))
     new_model.eval()
     new_model.requires_grad = False

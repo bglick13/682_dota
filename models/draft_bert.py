@@ -527,6 +527,7 @@ class DraftBert(torch.nn.Module):
         # if cuda:
         #     src = src.cuda()  # Set the masked values to the embedding pad idx
         src = self.hero_embeddings(src)
+        # TODO: This should be a multiplication
         src = src + np.sqrt(self.embedding_dim)
         src = self.pe(src)
 
@@ -537,6 +538,7 @@ class DraftBert(torch.nn.Module):
         out = self.encoder(src)
         # Encoder outputs shape (seq_length, batch_size, embedding_dim)
         out = out.permute(1, 0, 2)
+
         return out
 
     def get_masked_output(self, x, friendly_cluster_h=None, opponent_cluster_h=None):
@@ -544,6 +546,7 @@ class DraftBert(torch.nn.Module):
             return self.masked_output(x)
         else:
             masked_hero_h = self.masked_output_hidden(x)
+            # TODO: need to call self.friendly_cluster_update(friendly_cluster_h)
             masked_hero_h += friendly_cluster_h
             masked_hero_h += opponent_cluster_h
             masked_hero_h = F.relu(masked_hero_h)
@@ -553,10 +556,11 @@ class DraftBert(torch.nn.Module):
         return self.matching_output(x)
 
     def get_next_hero_output(self, x, friendly_cluster_h=None, opponent_cluster_h=None):
-        if self.n_clusters is None:
+        if self.n_clusters is None or friendly_cluster_h is None or opponent_cluster_h is None:
             return self.next_hero_output(x)
         else:
             next_hero_h = self.next_hero_output_hidden(x)
+            # TODO: need to call self.friendly_cluster_update(friendly_cluster_h)
             next_hero_h += friendly_cluster_h
             next_hero_h += opponent_cluster_h
             next_hero_h = F.relu(next_hero_h)
@@ -587,7 +591,14 @@ class DraftBert(torch.nn.Module):
         dataset.mask_pct = mask_pct
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4)
         if not test:
-            opt = torch.optim.Adam(self.parameters(), lr=lr)
+            opt = torch.optim.Adam([{'params': self.encoder.parameters()},
+                                {'params': self.win_output.parameters()},
+                                {'params': self.masked_output.parameters()},
+                                {'params': self.matching_output.parameters()},
+                                {'params': self.cluster_output.parameters()},
+                                {'params': self.friendly_cluster_update.parameters()},
+                                {'params': self.opponent_cluster_update.parameters()},
+                                {'params': self.hero_embeddings.parameters()}], lr=lr)
         mask_loss = torch.nn.CrossEntropyLoss(reduction='mean')
         matching_loss = torch.nn.CrossEntropyLoss(reduction='mean')
         win_loss = torch.nn.CrossEntropyLoss(reduction='mean')
@@ -701,7 +712,13 @@ class DraftBert(torch.nn.Module):
         print_iter = train_kwargs.get('print_iter', 100)
         max_steps = train_kwargs.get('steps', np.inf)
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4)
-        opt = torch.optim.Adam(self.parameters(), lr=lr)
+        opt = torch.optim.Adam([{'params': self.encoder.parameters()},
+                                {'params': self.win_output.parameters()},
+                                {'params': self.next_hero_output.parameters()},
+                                {'params': self.cluster_output.parameters()},
+                                {'params': self.friendly_cluster_update.parameters()},
+                                {'params': self.opponent_cluster_update.parameters()},
+                                {'params': self.hero_embeddings.parameters()}], lr=lr)
 
         next_hero_loss = torch.nn.CrossEntropyLoss(reduction='mean')
         win_loss = torch.nn.CrossEntropyLoss(reduction='mean')
@@ -807,7 +824,14 @@ class DraftBert(torch.nn.Module):
 
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4)
 
-        opt = torch.optim.Adam(self.parameters(), lr=lr)
+        opt = torch.optim.Adam([{'params': self.encoder.parameters()},
+                                {'params': self.win_output.parameters()},
+                                {'params': self.next_hero_output.parameters()},
+                                {'params': self.matching_output.parameters()},
+                                {'params': self.cluster_output.parameters()},
+                                {'params': self.friendly_cluster_update.parameters()},
+                                {'params': self.opponent_cluster_update.parameters()},
+                                {'params': self.hero_embeddings.parameters()}], lr=lr)
         next_hero_loss = torch.nn.CrossEntropyLoss(reduction='mean')
         win_loss = torch.nn.CrossEntropyLoss(reduction='mean')
         cluster_loss = torch.nn.CrossEntropyLoss(reduction='mean')
@@ -896,85 +920,85 @@ class DraftBert(torch.nn.Module):
             torch.save(self, f'../weights/checkpoints/draft_bert_pretrain_captains_mode_checkpoint_{epoch}.torch')
         return hist
 
-    def fit(self, src: torch.LongTensor, tgt: torch.LongTensor, task: DraftBertTasks, **train_kwargs):
-        """
-
-        :param src: shape (N, sequence_length, 1) where N is the size of the dataset
-        :param tgt: shape (N, sequence_length, 1) where N is the size of the dataset
-        :param task: Either draft prediction (fill in masked values) or draft matching (are these 2 teams from the same draft)
-        :param train_kwargs: lr, batch_size, steps
-        :return:
-        """
-        if isinstance(src, (list, np.ndarray)):
-            src = torch.LongTensor(src)
-        if isinstance(tgt, (list, np.ndarray)):
-            tgt = torch.LongTensor(tgt)
-        # Don't forget to set to train mode
-        self.train()
-        # self.cuda()
-        lr = train_kwargs.get('lr', 0.001)
-        batch_size = train_kwargs.get('batch_size', 512)
-        steps = train_kwargs.get('steps', 100)
-        mask_pct = train_kwargs.get('mask_pct', 0.1)
-        print_iter = train_kwargs.get('print_iter', 100)
-        save_iter = train_kwargs.get('save_iter', 100000)
-
-        if task == DraftBertTasks.DRAFT_PREDICTION:
-            opt = torch.optim.Adam(self.parameters(), lr=lr)
-            N = src.shape[0]
-            mask_loss = torch.nn.CrossEntropyLoss(reduction='mean')
-            matching_loss = torch.nn.CrossEntropyLoss(reduction='mean')
-            for step in tqdm(range(steps)):
-                opt.zero_grad()
-                idxs = np.random.choice(N, batch_size)
-
-                # Sample a batch of matchups
-                src_batch, tgt_batch = src[idxs], tgt[idxs]
-
-                # Randomly shuffle the order for each team to avoid sorted bias
-                src_batch_r = src_batch[:, 1:6]
-                src_batch_r = src_batch_r[:, torch.randperm(5)]
-                src_batch_d = src_batch[:, 7:12]
-                src_batch_d = src_batch_d[:, torch.randperm(5)]
-                src_batch[:, 1:6] = src_batch_r
-                src_batch[:, 7:12] = src_batch_d
-
-                # Randomly shuffle the matchups for half the batch
-                is_correct_matchup = np.random.choice([0, 1], batch_size)
-                shuffled_lineups = src_batch[is_correct_matchup == 0, 7:12]
-                shuffled_lineups = shuffled_lineups[torch.randperm(shuffled_lineups.size()[0])]
-                src_batch[is_correct_matchup == 0, 7:12] = shuffled_lineups
-
-                # Generate masks for random heros
-                masks = self._gen_random_masks(src_batch, mask_pct)
-                if cuda:
-                    src_batch = src_batch.cuda()
-                    masks = masks.cuda()
-
-                out = self.forward(src_batch, masks)  # -> shape (batch_size, sequence_length, embedding_dim)
-                to_predict = out[masks]
-                mask_pred = self.get_masked_output(to_predict)
-                mask_tgt_batch = tgt_batch[masks].cuda()
-                mask_batch_loss = mask_loss(mask_pred, mask_tgt_batch)
-
-                is_correct_pred = self.get_matching_output(out[:, 0, :])
-                is_correct_matchup = torch.LongTensor(is_correct_matchup)
-                if cuda:
-                    is_correct_matchup = is_correct_matchup.cuda()
-                is_correct_loss = matching_loss(is_correct_pred, is_correct_matchup)
-                batch_loss = (mask_batch_loss + is_correct_loss) / 2.
-                batch_loss.backward()
-                opt.step()
-
-                if step == 0 or (step+1) % print_iter == 0:
-                    batch_acc = (mask_pred.detach().cpu().numpy().argmax(1) == mask_tgt_batch.detach().cpu().numpy()).astype(int).mean()
-                    top_5_pred = np.argsort(mask_pred.detach().cpu().numpy(), axis=1)[:, -5:]
-                    top_5_acc = np.array([t in p for t, p in zip(mask_tgt_batch.detach().cpu().numpy(), top_5_pred)]).astype(int).mean()
-                    matching_acc = (is_correct_pred.detach().cpu().numpy().argmax(1) == is_correct_matchup.detach().cpu().numpy()).astype(int).mean()
-
-                    print(f'Step: {step}, Loss: {batch_loss}, Acc: {batch_acc}, Top 5 Acc: {top_5_acc}, Matching Acc: {matching_acc}')
-                if (step+1) % save_iter == 0:
-                    torch.save(self, f'draft_bert_pretrain_checkpoint_{step}.torch')
+    # def fit(self, src: torch.LongTensor, tgt: torch.LongTensor, task: DraftBertTasks, **train_kwargs):
+    #     """
+    #
+    #     :param src: shape (N, sequence_length, 1) where N is the size of the dataset
+    #     :param tgt: shape (N, sequence_length, 1) where N is the size of the dataset
+    #     :param task: Either draft prediction (fill in masked values) or draft matching (are these 2 teams from the same draft)
+    #     :param train_kwargs: lr, batch_size, steps
+    #     :return:
+    #     """
+    #     if isinstance(src, (list, np.ndarray)):
+    #         src = torch.LongTensor(src)
+    #     if isinstance(tgt, (list, np.ndarray)):
+    #         tgt = torch.LongTensor(tgt)
+    #     # Don't forget to set to train mode
+    #     self.train()
+    #     # self.cuda()
+    #     lr = train_kwargs.get('lr', 0.001)
+    #     batch_size = train_kwargs.get('batch_size', 512)
+    #     steps = train_kwargs.get('steps', 100)
+    #     mask_pct = train_kwargs.get('mask_pct', 0.1)
+    #     print_iter = train_kwargs.get('print_iter', 100)
+    #     save_iter = train_kwargs.get('save_iter', 100000)
+    #
+    #     if task == DraftBertTasks.DRAFT_PREDICTION:
+    #         opt = torch.optim.Adam(self.parameters(), lr=lr)
+    #         N = src.shape[0]
+    #         mask_loss = torch.nn.CrossEntropyLoss(reduction='mean')
+    #         matching_loss = torch.nn.CrossEntropyLoss(reduction='mean')
+    #         for step in tqdm(range(steps)):
+    #             opt.zero_grad()
+    #             idxs = np.random.choice(N, batch_size)
+    #
+    #             # Sample a batch of matchups
+    #             src_batch, tgt_batch = src[idxs], tgt[idxs]
+    #
+    #             # Randomly shuffle the order for each team to avoid sorted bias
+    #             src_batch_r = src_batch[:, 1:6]
+    #             src_batch_r = src_batch_r[:, torch.randperm(5)]
+    #             src_batch_d = src_batch[:, 7:12]
+    #             src_batch_d = src_batch_d[:, torch.randperm(5)]
+    #             src_batch[:, 1:6] = src_batch_r
+    #             src_batch[:, 7:12] = src_batch_d
+    #
+    #             # Randomly shuffle the matchups for half the batch
+    #             is_correct_matchup = np.random.choice([0, 1], batch_size)
+    #             shuffled_lineups = src_batch[is_correct_matchup == 0, 7:12]
+    #             shuffled_lineups = shuffled_lineups[torch.randperm(shuffled_lineups.size()[0])]
+    #             src_batch[is_correct_matchup == 0, 7:12] = shuffled_lineups
+    #
+    #             # Generate masks for random heros
+    #             masks = self._gen_random_masks(src_batch, mask_pct)
+    #             if cuda:
+    #                 src_batch = src_batch.cuda()
+    #                 masks = masks.cuda()
+    #
+    #             out = self.forward(src_batch, masks)  # -> shape (batch_size, sequence_length, embedding_dim)
+    #             to_predict = out[masks]
+    #             mask_pred = self.get(to_predict)
+    #             mask_tgt_batch = tgt_batch[masks].cuda()
+    #             mask_batch_loss = mask_loss(mask_pred, mask_tgt_batch)
+    #
+    #             is_correct_pred = self.get_matching_output(out[:, 0, :])
+    #             is_correct_matchup = torch.LongTensor(is_correct_matchup)
+    #             if cuda:
+    #                 is_correct_matchup = is_correct_matchup.cuda()
+    #             is_correct_loss = matching_loss(is_correct_pred, is_correct_matchup)
+    #             batch_loss = (mask_batch_loss + is_correct_loss) / 2.
+    #             batch_loss.backward()
+    #             opt.step()
+    #
+    #             if step == 0 or (step+1) % print_iter == 0:
+    #                 batch_acc = (mask_pred.detach().cpu().numpy().argmax(1) == mask_tgt_batch.detach().cpu().numpy()).astype(int).mean()
+    #                 top_5_pred = np.argsort(mask_pred.detach().cpu().numpy(), axis=1)[:, -5:]
+    #                 top_5_acc = np.array([t in p for t, p in zip(mask_tgt_batch.detach().cpu().numpy(), top_5_pred)]).astype(int).mean()
+    #                 matching_acc = (is_correct_pred.detach().cpu().numpy().argmax(1) == is_correct_matchup.detach().cpu().numpy()).astype(int).mean()
+    #
+    #                 print(f'Step: {step}, Loss: {batch_loss}, Acc: {batch_acc}, Top 5 Acc: {top_5_acc}, Matching Acc: {matching_acc}')
+    #             if (step+1) % save_iter == 0:
+    #                 torch.save(self, f'draft_bert_pretrain_checkpoint_{step}.torch')
 
     def predict(self, src: torch.LongTensor, mask: torch.BoolTensor, task: DraftBertTasks,
                 **predict_kwargs):

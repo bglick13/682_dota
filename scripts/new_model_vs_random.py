@@ -43,7 +43,7 @@ def do_rollout(model, hero_ids, port, verbose=False):
 
         if npi < 13:
             if player.pick_first:
-                action, uct_value, p, nn_value, leafs = player.act(state, action, num_reads=500, eps=0, deterministic=True)
+                action, uct_value, p, nn_value, leafs = player.act(state, action, num_reads=500, deterministic=True)
                 nn_values.append(nn_value)
                 uct_values.append(uct_value)
             else:
@@ -54,7 +54,7 @@ def do_rollout(model, hero_ids, port, verbose=False):
                 legal_moves = draft.state.get_legal_moves
                 action = np.random.choice(legal_moves)
             else:
-                action, uct_value, p, nn_value, leafs = player.act(state, action, num_reads=500, eps=0, deterministic=True)
+                action, uct_value, p, nn_value, leafs = player.act(state, action, num_reads=500, deterministic=True)
                 nn_values.append(nn_value)
                 uct_values.append(uct_value)
         all_states.append(state.game_state)
@@ -75,9 +75,9 @@ def do_rollout(model, hero_ids, port, verbose=False):
         turn += 1
 
     if (value == 1 and player.pick_first) or (value == 0 and not player.pick_first):
-        print("Agent victory!")
+        print(f"Agent victory! ({player.pick_first})")
     else:
-        print('Agent Lost :(')
+        print(f'Agent Lost :( ({player.pick_first})')
     all_actions.append(action)
     all_states.append(state.game_state)
 
@@ -93,7 +93,7 @@ def do_rollout(model, hero_ids, port, verbose=False):
 
 
 if __name__ == '__main__':
-    model = torch.load('../data/self_play/memories_for_train_1/train_from_selfplay_1.torch', map_location=torch.device('cpu'))
+    model = torch.load('../data/self_play/memories_for_train_3/new_model.torch', map_location=torch.device('cpu'))
     model.eval()
     model.requires_grad = False
 
@@ -118,6 +118,9 @@ if __name__ == '__main__':
         times.append(time.time() - start_batch)
         print(f'Finished batch in {times[-1]}s')
     end = time.time()
-    with open('../data/self_play/new_model_1_vs_random_memory.pickle', 'wb') as f:
+    with open('../data/self_play/new_model_3_vs_random_memory.pickle', 'wb') as f:
         pickle.dump(memory, f)
 
+# 143 - 57 (71.5%)
+# Pick first: 72 - 21 (77.4%)
+# Pick second: 71 - 36 (66.4%)
