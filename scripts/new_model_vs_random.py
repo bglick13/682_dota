@@ -93,7 +93,7 @@ def do_rollout(model, hero_ids, port, verbose=False):
 
 
 if __name__ == '__main__':
-    model = torch.load('../data/self_play/memories_for_train_3/new_model.torch', map_location=torch.device('cpu'))
+    model = torch.load('../data/self_play/memories_for_train_2/new_model.torch', map_location=torch.device('cpu'))
     model.eval()
     model.requires_grad = False
 
@@ -121,6 +121,16 @@ if __name__ == '__main__':
     with open('../data/self_play/new_model_3_vs_random_memory.pickle', 'wb') as f:
         pickle.dump(memory, f)
 
+
+## TRAIN 1
+# 148 - 52 (74%)
+# Pick first: 73 - 25
+# Pick second: 75 - 27
+
+## TRAIN 2
+# 153 - 47 (76.5%)
+
+## TRAIN 3
 # 143 - 57 (71.5%)
 # Pick first: 72 - 21 (77.4%)
 # Pick second: 71 - 36 (66.4%)

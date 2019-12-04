@@ -449,7 +449,7 @@ class DraftBert(torch.nn.Module):
         # Cluster related layers
         self.cluster_output_hidden = torch.nn.Sequential(torch.nn.Linear(embedding_dim, out_ff_dim),
                                                          torch.nn.LayerNorm(out_ff_dim),
-                                                         torch.nn.ReLU())
+                                                         Swish())
         self.cluster_out = torch.nn.Linear(out_ff_dim, n_clusters)
         self.cluster_output = torch.nn.Sequential(self.cluster_output_hidden, self.cluster_out)
         self.friendly_cluster_update = torch.nn.Sequential(torch.nn.Linear(out_ff_dim, out_ff_dim),
