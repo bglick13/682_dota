@@ -17,7 +17,7 @@ def run(memory_file, ):
                 mem = pickle.load(f)
             mems.append(mem)
 
-    model: DraftBert = load('../weights/final_weights/train_from_selfplay_1.torch')
+    model: DraftBert = load('../weights/final_weights/train_from_selfplay_2.torch')
     with open('../weights/kmeans.pickle', 'rb') as f:
         clusterizer = pickle.load(f)
 
@@ -35,4 +35,4 @@ def run(memory_file, ):
 
 
 if __name__ == '__main__':
-    run('../data/self_play/memories_for_train_2')
+    run('../data/self_play/memories_for_train_3')

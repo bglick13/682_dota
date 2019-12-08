@@ -18,6 +18,7 @@ from models.draft_agent import DraftAgent, DraftBert
 
 def do_rollout(model, hero_ids, num_reads, port, verbose=False, eps=0.1):
     # player_1_pick_first = np.random.choice([True, False])
+    p1_use_rolling_avg = (port % 2) == 0
     player1: DraftAgent = DraftAgent(model=model, pick_first=True)
     player2: DraftAgent = DraftAgent(model=model, pick_first=False)
     draft = CaptainModeDraft(hero_ids, port)
@@ -42,14 +43,12 @@ def do_rollout(model, hero_ids, num_reads, port, verbose=False, eps=0.1):
             raise IndexError
 
         if npi < 13:
-            action, uct_value, p, nn_value, leafs = player1.act(state, action, num_reads=num_reads, eps=eps)
-            if len(all_actions) == 6:
-                action = model.le.transform([129])[0]
+            action, uct_value, p, nn_value, leafs = player1.act(state, action, num_reads=num_reads, running_avg=p1_use_rolling_avg)
             player1_nn_values.append(nn_value)
             player1_uct_values.append(uct_value)
             # player1_uct_rollout_leafs.append(leafs)
         else:
-            action, uct_value, p, nn_value, leafs = player2.act(state, action, num_reads=num_reads, eps=eps)
+            action, uct_value, p, nn_value, leafs = player2.act(state, action, num_reads=num_reads, running_avg=not p1_use_rolling_avg)
             player2_nn_values.append(nn_value)
             player2_uct_values.append(uct_value)
             # player2_uct_rollout_leafs.append(leafs)
@@ -58,14 +57,11 @@ def do_rollout(model, hero_ids, num_reads, port, verbose=False, eps=0.1):
         all_actions.append(action)
         state, value, done = draft.step(action)
 
-        if value == 0:  # Dire victory
-            print('Dire victory')
+        if (value == 0 and not p1_use_rolling_avg) or (value == 1 and p1_use_rolling_avg):  # Dire victory
+            print('running avg victory!')
             break
-        elif value == 1:
-            print('Radiant Victory')
-            break
-        elif done:
-            print('Done but no victory')
+        elif (value == 1 and not p1_use_rolling_avg) or (value == 0 and p1_use_rolling_avg):
+            print('running avg lost :(')
             break
 
     all_actions.append(action)

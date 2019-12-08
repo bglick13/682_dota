@@ -13,16 +13,11 @@ import pickle
 from multiprocessing import Pool, Process
 import time
 from functools import partial
-import docker
+from const.pro_drafts import drafts
 
 
-def do_rollout(model, hero_ids, port, verbose=False):
-    # if not torch.cuda.is_available():
-    # model: DraftBert = torch.load(model, map_location=torch.device('cpu'))
-    # model.eval()
-    # # else:
-    # #     model = torch.load(model)
-    # model.requires_grad = False
+def do_rollout(model, hero_ids, DRAFT, port, verbose=False):
+    draft_id = 0
 
     player = DraftAgent(model=model, pick_first=np.random.choice([True, False]))
     draft = CaptainModeDraft(hero_ids, port)
@@ -47,12 +42,18 @@ def do_rollout(model, hero_ids, port, verbose=False):
                 nn_values.append(nn_value)
                 uct_values.append(uct_value)
             else:
-                legal_moves = draft.state.get_legal_moves
-                action = np.random.choice(legal_moves)
+                try:
+                    action = hero_ids.loc[hero_ids['localized_name'] == DRAFT[draft_id], 'model_id'].values[0]
+                except:
+                    print(DRAFT[draft_id])
+                draft_id += 1
         else:
             if player.pick_first:
-                legal_moves = draft.state.get_legal_moves
-                action = np.random.choice(legal_moves)
+                try:
+                    action = hero_ids.loc[hero_ids['localized_name'] == DRAFT[draft_id], 'model_id'].values[0]
+                except:
+                    print(DRAFT[draft_id])
+                draft_id += 1
             else:
                 action, uct_value, p, nn_value, leafs = player.act(state, action, num_reads=500, deterministic=True)
                 nn_values.append(nn_value)
@@ -68,16 +69,22 @@ def do_rollout(model, hero_ids, port, verbose=False):
             print('Radiant Victory')
             break
         elif done:
-            with open('tmp.txt', mode='a+') as f:
-                f.write("poopy\n")
             print('Done but no victory')
             break
         turn += 1
 
     if (value == 1 and player.pick_first) or (value == 0 and not player.pick_first):
-        print(f"Agent victory! ({player.pick_first})")
+        if player.pick_first:
+            print("Agent victory! (pick first)")
+        else:
+            print("Agent victory! (pick second)")
+
     else:
-        print(f'Agent Lost :( ({player.pick_first})')
+        if player.pick_first:
+            print('Agent Lost :( (pick first)')
+        else:
+            print('Agent Lost :( (pick second)')
+
     all_actions.append(action)
     all_states.append(state.game_state)
 
@@ -93,7 +100,7 @@ def do_rollout(model, hero_ids, port, verbose=False):
 
 
 if __name__ == '__main__':
-    model = torch.load('../data/self_play/memories_for_train_2/new_model.torch', map_location=torch.device('cpu'))
+    model = torch.load('../data/self_play/memories_for_train_3/new_model.torch', map_location=torch.device('cpu'))
     model.eval()
     model.requires_grad = False
 
@@ -103,14 +110,15 @@ if __name__ == '__main__':
     port = 13337
     verbose = True
     hero_ids = pd.read_json('../const/draft_bert_clustering_hero_ids.json', orient='records')
+    hero_ids['localized_name'] = hero_ids['localized_name'].str.lower()
 
     memory = deque(maxlen=memory_size)
-    f = partial(do_rollout, model, hero_ids)
 
     times = []
     start = time.time()
 
-    for batch_of_games in range(n_games // n_jobs):
+    for draft in drafts:
+        f = partial(do_rollout, model, hero_ids, draft)
         start_batch = time.time()
         with Pool(n_jobs) as pool:
             results = pool.map_async(f, [port + i for i in range(n_jobs)]).get()
@@ -118,19 +126,6 @@ if __name__ == '__main__':
         times.append(time.time() - start_batch)
         print(f'Finished batch in {times[-1]}s')
     end = time.time()
-    with open('../data/self_play/new_model_3_vs_random_memory.pickle', 'wb') as f:
+    with open('../data/self_play/new_model_3_vs_pro_drafts.pickle', 'wb') as f:
         pickle.dump(memory, f)
 
-
-## TRAIN 1
-# 148 - 52 (74%)
-# Pick first: 73 - 25
-# Pick second: 75 - 27
-
-## TRAIN 2
-# 153 - 47 (76.5%)
-
-## TRAIN 3
-# 143 - 57 (71.5%)
-# Pick first: 72 - 21 (77.4%)
-# Pick second: 71 - 36 (66.4%)
