@@ -43,7 +43,7 @@ class DummyAgent(nn.Module):
 
 
 class DraftAgent(DummyAgent):
-    def __init__(self, model: DraftBert, pick_first):
+    def __init__(self, model: DraftBert, pick_first, greedy=False):
         super().__init__()
         self.model: DraftBert = model
         # if torch.cuda.is_available():
@@ -54,6 +54,7 @@ class DraftAgent(DummyAgent):
         self.best_model = model
         self.action_size = model.n_heros
         self.pick_first = pick_first
+        self.greedy = greedy
 
     def simulate(self):
         """
@@ -86,11 +87,11 @@ class DraftAgent(DummyAgent):
         """
         pass
 
-    def act(self, state, action=-1, num_reads=100, eps=0.1, deterministic=False, greedy=False):
+    def act(self, state, action=-1, num_reads=100, eps=0.1, deterministic=False):
         leafs = []
         action, value, values = None, None, None
 
-        if greedy:
+        if self.greedy:
             probs, _, _ = self.get_preds(state)
             action = np.argmax(probs)
         else:
@@ -110,11 +111,13 @@ class DraftAgent(DummyAgent):
             
         next_state = state.take_action(action)
         nn_value = self.get_preds(next_state, plot_attn=True)[1]
-        p = F.softmax(FloatTensor(values), -1).numpy()
-        if not deterministic:
-            np.random.seed()
-            action = np.random.choice(range(len(values)), p=p)
-        return action, values, p, nn_value, leafs
+
+        if not self.greedy:
+            p = F.softmax(FloatTensor(values), -1).numpy()
+            if not deterministic:
+                np.random.seed()
+                action = np.random.choice(range(len(values)), p=p)
+        return action, values, nn_value
 
     def get_preds(self, leaf: Union[UCTNode, DraftState], plot_attn=False):
         if isinstance(leaf, UCTNode):

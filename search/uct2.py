@@ -52,7 +52,7 @@ class UCTNode(object):
         return self.child_total_value / (1 + self.child_number_visits)
 
     def child_U(self): # 1.25 is the c_puct term that many papers use. It controls exploration.
-        return 10.0 * self.child_priors * np.sqrt(np.log(self.number_visits + 1)/(1 + self.child_number_visits))
+        return 5.0 * self.child_priors * np.sqrt(np.log(self.number_visits + 1)/(1 + self.child_number_visits))
 
     def best_child(self):
         if self.state.done:

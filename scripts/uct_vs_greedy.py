@@ -16,10 +16,11 @@ from draft.draft_env import CaptainModeDraft
 from models.draft_agent import DraftAgent, DraftBert
 
 
-def do_rollout(old_model, new_model, hero_ids, port, verbose=False):
-    player_1_pick_first = np.random.choice([True, False])
-    player1: DraftAgent = DraftAgent(model=old_model, pick_first=player_1_pick_first)
-    player2: DraftAgent = DraftAgent(model=new_model, pick_first=not player_1_pick_first)
+def do_rollout(model_1, model_2, hero_ids, port, verbose=False):
+    # player_1_pick_first = np.random.choice([True, False])
+    player_1_pick_first = True
+    player1: DraftAgent = DraftAgent(model=model_1, pick_first=player_1_pick_first, greedy=False)
+    player2: DraftAgent = DraftAgent(model=model_2, pick_first=not player_1_pick_first , greedy=True)
     draft = CaptainModeDraft(hero_ids, port)
     state = draft.reset()
     turn = 0
@@ -40,17 +41,17 @@ def do_rollout(old_model, new_model, hero_ids, port, verbose=False):
 
         if npi < 13:
             if player_1_pick_first:
-                action, uct_value, p, nn_value, _ = player1.act(state, action, num_reads=500, eps=0, deterministic=True)
+                action, uct_value, nn_value = player1.act(state, action, num_reads=500, eps=0, deterministic=True)
                 player1_values.append(nn_value)
             else:
-                action, uct_value, p, nn_value, _ = player2.act(state, action, num_reads=500, eps=0, deterministic=True)
+                action, uct_value, nn_value = player2.act(state, action, num_reads=500, eps=0, deterministic=True)
                 player2_values.append(nn_value)
         else:
             if player_1_pick_first:
-                action, uct_value, p, nn_value, _ = player2.act(state, action, num_reads=500, eps=0, deterministic=True)
+                action, uct_value, nn_value = player2.act(state, action, num_reads=500, eps=0, deterministic=True)
                 player2_values.append(nn_value)
             else:
-                action, uct_value, p, nn_value, _ = player1.act(state, action, num_reads=500, eps=0, deterministic=True)
+                action, uct_value, nn_value = player1.act(state, action, num_reads=500, eps=0, deterministic=True)
                 player1_values.append(nn_value)
 
         all_states.append(state.game_state)
@@ -87,43 +88,45 @@ def do_rollout(old_model, new_model, hero_ids, port, verbose=False):
     # TODO: I'm really not confident this is right - it's worth double and triple checking
     all_values = [value] * 23
     player_1_pick_first = [player_1_pick_first] * 23
-    del old_model
-    del new_model
+    del model_1
+    del model_2
     empty_cache()
     return dict(all_actions=all_actions, all_states=all_states, all_values=all_values, player1_values=player1_values,
                 player2_values=player2_values, player_1_pick_first=player_1_pick_first)
 
 
 if __name__ == '__main__':
-    file_name = 'eval1'
+    file_name = 'uct_vs_greedy_eval_0_2'
     if file_name is None:
         file_name = f'selfplay_{time.time()}'
-    old_model: DraftBert = load('../weights/final_weights/train_from_selfplay_1.torch',
-                            map_location=device('cpu'))
-    old_model.eval()
-    old_model.requires_grad = False
 
-    new_model: DraftBert = load('../weights/final_weights/train_from_selfplay_2.torch',
+    model_1: DraftBert = load('../weights/final_weights/draft_bert_pretrain_captains_mode_with_clusters.torch',
                             map_location=device('cpu'))
-    new_model.eval()
-    new_model.requires_grad = False
+    model_1.eval()
+    model_1.requires_grad = False
+
+    model_2: DraftBert = load('../weights/final_weights/draft_bert_pretrain_captains_mode_with_clusters.torch',
+                            map_location=device('cpu'))
+    model_2.eval()
+    model_2.requires_grad = False
     memory_size = 500000
-    n_jobs = 4
-    n_games = 200
+    n_jobs = 4  
+    n_games = 100
     port = 13337
     verbose = True
     hero_ids = pd.read_json('../const/draft_bert_clustering_hero_ids.json', orient='records')
 
     memory = deque(maxlen=memory_size)
-    f = partial(do_rollout, old_model, new_model, hero_ids)
+    f = partial(do_rollout, model_1, model_2, hero_ids)
 
     for batch_of_games in range(n_games // n_jobs):
         start = time.time()
         with Pool(n_jobs) as pool:
             results = pool.map_async(f, [port + i for i in range(n_jobs)]).get()
             memory.extend(results)
+        with open(f'../data/evaluations/{file_name}.pickle', 'wb') as file:
+            pickle.dump(memory, file)
         end = time.time()
         print(f'Finished batch {batch_of_games} in {end-start}s')
-    with open(f'../data/evaluations/{file_name}.pickle', 'wb') as f:
-        pickle.dump(memory, f)
+    
 
