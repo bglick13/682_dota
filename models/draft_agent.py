@@ -88,13 +88,13 @@ class DraftAgent(DummyAgent):
         """
         pass
 
-    def act(self, state, action=-1, num_reads=100, deterministic=False, use_clusters=True):
+    def act(self, state, action=-1, num_reads=100, deterministic=False, use_clusters=True, running_avg=False):
         if self.solver is None:
-            self.root = UCTNode(state, action)
+            self.root = UCTNode(state, action, running_avg=running_avg)
             # self.root.number_visits += 1
             self.solver = UCT(self.root, num_reads)
         else:
-            self.root = UCTNode(state, action, self.root)
+            self.root = UCTNode(state, action, self.root, running_avg=running_avg)
             # self.root.number_visits += 1
             self.solver.root = self.root
 
