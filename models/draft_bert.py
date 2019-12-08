@@ -396,6 +396,19 @@ class PositionalEncoding(torch.nn.Module):
         return self.dropout(x)
 
 
+class FilmLayer(torch.nn.Module):
+    def __init__(self, input_size, output_size):
+        super().__init__()
+        self.input_size = input_size
+        self.output_size = output_size
+
+        self.gamma = torch.nn.Linear(input_size, output_size)
+        self.beta = torch.nn.Linear(input_size, output_size)
+
+    def forward(self, conditioning_input, raw_input):
+        return self.gamma(conditioning_input) * raw_input + self.beta(conditioning_input)
+
+
 def swish(x):
     return F.sigmoid(x) * x
 
@@ -419,6 +432,8 @@ class DraftBert(torch.nn.Module):
 
         self.encoder_layer = torch.nn.TransformerEncoderLayer(embedding_dim, n_head, dim_feedforward=ff_dim, dropout=0.2)
         self.encoder = torch.nn.TransformerEncoder(self.encoder_layer, n_encoder_layers)
+        # self.decoder_layer = torch.nn.TransformerDecoderLayer(embedding_dim, n_encoder_layers, dim_feedforward=ff_dim)
+        # self.decoder = torch.nn.TransformerDecoder(self.decoder_layer, n_encoder_layers)
 
         # Masked output layers
         self.masked_output_hidden = torch.nn.Sequential(torch.nn.Linear(embedding_dim, out_ff_dim),
@@ -447,15 +462,18 @@ class DraftBert(torch.nn.Module):
         self.next_hero_output = torch.nn.Sequential(self.next_hero_output_hidden, self.next_hero_out)
 
         # Cluster related layers
-        self.cluster_output_hidden = torch.nn.Sequential(torch.nn.Linear(embedding_dim, out_ff_dim),
-                                                         torch.nn.LayerNorm(out_ff_dim),
-                                                         Swish())
-        self.cluster_out = torch.nn.Linear(out_ff_dim, n_clusters)
-        self.cluster_output = torch.nn.Sequential(self.cluster_output_hidden, self.cluster_out)
-        self.friendly_cluster_update = torch.nn.Sequential(torch.nn.Linear(out_ff_dim, out_ff_dim),
-                                                           torch.nn.LayerNorm(out_ff_dim))
-        self.opponent_cluster_update = torch.nn.Sequential(torch.nn.Linear(out_ff_dim, out_ff_dim),
-                                                           torch.nn.LayerNorm(out_ff_dim))
+        # self.clusterizer = torch.nn.Sequential(torch.nn.Linear(embedding_dim))
+        if self.n_clusters is not None:
+            self.cluster_output_hidden = torch.nn.Sequential(torch.nn.Linear(embedding_dim, out_ff_dim),
+                                                             torch.nn.LayerNorm(out_ff_dim),
+                                                             Swish())
+            self.cluster_out = torch.nn.Linear(out_ff_dim, n_clusters)
+            self.cluster_output = torch.nn.Sequential(self.cluster_output_hidden, self.cluster_out)
+
+            self.friendly_cluster_update = torch.nn.Sequential(torch.nn.Linear(out_ff_dim, out_ff_dim),
+                                                               torch.nn.LayerNorm(out_ff_dim))
+            self.opponent_cluster_update = torch.nn.Sequential(torch.nn.Linear(out_ff_dim, out_ff_dim),
+                                                               torch.nn.LayerNorm(out_ff_dim))
 
         dictionary_size = n_heros
         self.hero_embeddings = torch.nn.Embedding(dictionary_size, embedding_dim, padding_idx=int(mask_idx))
@@ -499,7 +517,7 @@ class DraftBert(torch.nn.Module):
         if mask is not None:
             src[mask] = self.mask_idx
         src = self.hero_embeddings(src)
-        src = src + np.sqrt(self.embedding_dim)
+        src = src * np.sqrt(self.embedding_dim)
         src = self.pe(src)
 
         # Encoder expects shape (seq_length, batch_size, embedding_dim)
@@ -527,8 +545,7 @@ class DraftBert(torch.nn.Module):
         # if cuda:
         #     src = src.cuda()  # Set the masked values to the embedding pad idx
         src = self.hero_embeddings(src)
-        # TODO: This should be a multiplication
-        src = src + np.sqrt(self.embedding_dim)
+        src = src * np.sqrt(self.embedding_dim)
         src = self.pe(src)
 
         # Encoder expects shape (seq_length, batch_size, embedding_dim)
@@ -546,10 +563,9 @@ class DraftBert(torch.nn.Module):
             return self.masked_output(x)
         else:
             masked_hero_h = self.masked_output_hidden(x)
-            # TODO: need to call self.friendly_cluster_update(friendly_cluster_h)
-            masked_hero_h += friendly_cluster_h
-            masked_hero_h += opponent_cluster_h
-            masked_hero_h = F.relu(masked_hero_h)
+            masked_hero_h += swish(self.friendly_cluster_update(friendly_cluster_h))
+            masked_hero_h += swish(self.opponent_cluster_update(opponent_cluster_h))
+            masked_hero_h = swish(masked_hero_h)
             return self.masked_output_out(masked_hero_h)
 
     def get_matching_output(self, x):
@@ -560,10 +576,9 @@ class DraftBert(torch.nn.Module):
             return self.next_hero_output(x)
         else:
             next_hero_h = self.next_hero_output_hidden(x)
-            # TODO: need to call self.friendly_cluster_update(friendly_cluster_h)
-            next_hero_h += friendly_cluster_h
-            next_hero_h += opponent_cluster_h
-            next_hero_h = F.relu(next_hero_h)
+            next_hero_h += swish(self.friendly_cluster_update(friendly_cluster_h))
+            next_hero_h += swish(self.opponent_cluster_update(opponent_cluster_h))
+            next_hero_h = swish(next_hero_h)
             return self.next_hero_out(next_hero_h)
 
     def get_win_output(self, x):
@@ -595,14 +610,15 @@ class DraftBert(torch.nn.Module):
                                 {'params': self.win_output.parameters()},
                                 {'params': self.masked_output.parameters()},
                                 {'params': self.matching_output.parameters()},
-                                {'params': self.cluster_output.parameters()},
-                                {'params': self.friendly_cluster_update.parameters()},
-                                {'params': self.opponent_cluster_update.parameters()},
+                                # {'params': self.cluster_output.parameters()},
+                                # {'params': self.friendly_cluster_update.parameters()},
+                                # {'params': self.opponent_cluster_update.parameters()},
                                 {'params': self.hero_embeddings.parameters()}], lr=lr)
         mask_loss = torch.nn.CrossEntropyLoss(reduction='mean')
         matching_loss = torch.nn.CrossEntropyLoss(reduction='mean')
         win_loss = torch.nn.CrossEntropyLoss(reduction='mean')
-        cluster_loss = torch.nn.CrossEntropyLoss(reduction='mean')
+        if self.n_clusters is not None:
+            cluster_loss = torch.nn.CrossEntropyLoss(reduction='mean')
 
         hist = dict(epoch=[], step=[], masked_hero_acc=[], top_5_acc=[], cluster_acc=[], win_acc=[], loss=[])
         for epoch in tqdm(range(epochs)):
@@ -698,7 +714,8 @@ class DraftBert(torch.nn.Module):
                     hist['top_5_acc'].append(top_5_acc)
                     hist['loss'].append(batch_loss.detach().cpu().numpy())
                     print(
-                        f'Epoch: {epoch}, Step: {i}, Loss: {batch_loss}, Acc: {batch_acc}, Top 5 Acc: {top_5_acc},'
+                        f'Epoch: {epoch}, Step: {i}, Loss (Mask, Win, Match): {batch_loss} ({mask_batch_loss},'
+                        f'{batch_win_loss}, {is_correct_loss}, Acc: {batch_acc}, Top 5 Acc: {top_5_acc},'
                         f'Matching Acc: {matching_acc}, Win Acc: {win_acc}, Cluster Acc: {cluster_acc}')
             if not test:
                 torch.save(self, f'../weights/checkpoints/draft_bert_pretrain_allpick_checkpoint_{epoch}.torch')

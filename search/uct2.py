@@ -9,7 +9,7 @@ class DummyNode(object):
 
 
 class UCTNode(object):
-    def __init__(self, state, move, parent=None):
+    def __init__(self, state, move, parent=None, running_avg=False):
         self.state = state
         self.move = move
         self.is_expanded = False
@@ -21,42 +21,39 @@ class UCTNode(object):
         self.child_priors = np.zeros([len(self.state.heros)], dtype=np.float32)
         self.child_total_value = np.zeros([len(self.state.heros)], dtype=np.float32)
         self.child_number_visits = np.zeros([len(self.state.heros)], dtype=np.float32)
+        self.q_running_mean = None
+        self.u_running_mean = None
+        self.running_avg = running_avg
 
     def is_leaf(self):
         return len(self.edges) == 0
-
-    # @property
-    # def number_visits(self):
-    #     if self.parent is None:
-    #         return 0
-    #     return self.parent.child_number_visits[self.move]
-    
-    # @number_visits.setter
-    # def number_visits(self, value):
-    #     if self.parent is not None:
-    #         self.parent.child_number_visits[self.move] = value
-
-    # @property
-    # def total_value(self):
-    #     if self.parent is None:
-    #         return 0
-    #     return self.parent.child_total_value[self.move]
-
-    # @total_value.setter
-    # def total_value(self, value):
-    #     if self.parent is not None:
-    #         self.parent.child_total_value[self.move] = value
 
     def child_Q(self):
         return self.child_total_value / (1 + self.child_number_visits)
 
     def child_U(self): # 1.25 is the c_puct term that many papers use. It controls exploration.
-        return 5 * self.child_priors * np.sqrt(np.log(self.number_visits + 1)/(1 + self.child_number_visits))
+        # return 5 * self.child_priors * np.sqrt(np.log(self.number_visits + 1)/(1 + self.child_number_visits))
+        if self.running_avg:
+            return np.sqrt(np.log(self.number_visits + 1)/(1 + self.child_number_visits))
+        else:
+            return 5 * self.child_priors * np.sqrt(np.log(self.number_visits + 1) / (1 + self.child_number_visits))
 
     def best_child(self):
         if self.state.done:
             return None, None, None
-        values = self.child_Q() + self.child_U()
+        q = self.child_Q()
+        u = self.child_U()
+        if self.running_avg:
+            if self.q_running_mean is None:
+                self.q_running_mean = q
+                self.u_running_mean = u
+            else:
+                self.q_running_mean = (.9 * self.q_running_mean) + (.1 * q)
+                self.u_running_mean = (.9 * self.u_running_mean) + (.1 * u)
+            q = (q - self.q_running_mean) / (self.q_running_mean + 1e-5)
+            u = (u - self.u_running_mean) / (self.u_running_mean + 1e-5)
+        values = q + u
+
         legal_moves = self.state.get_legal_moves
         illegal_moves = np.ones(values.shape, dtype=bool)
         illegal_moves[legal_moves] = False
@@ -74,7 +71,7 @@ class UCTNode(object):
     def add_child(self, move):
         # Value will be 0 unless the game is over
         new_state = self.state.take_action(move)
-        self.children[move] = UCTNode(new_state, move = move, parent=self)
+        self.children[move] = UCTNode(new_state, move = move, parent=self, running_avg=self.running_avg)
 
 
 class UCT():

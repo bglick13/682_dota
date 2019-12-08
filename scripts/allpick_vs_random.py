@@ -27,7 +27,6 @@ def do_rollout(model, hero_ids, port, verbose=False):
     player = DraftAgent(model=model, pick_first=np.random.choice([True, False]))
     draft = CaptainModeDraft(hero_ids, port)
     state = draft.reset()
-    turn = 0
     action = -1
 
     all_actions = []
@@ -43,9 +42,7 @@ def do_rollout(model, hero_ids, port, verbose=False):
 
         if npi < 13:
             if player.pick_first:
-                action, uct_value, p, nn_value, leafs = player.act(state, action, num_reads=500, eps=0)
-                nn_values.append(nn_value)
-                uct_values.append(uct_value)
+                action = player.act(state, action, num_reads=500, deterministic=True)
             else:
                 legal_moves = draft.state.get_legal_moves
                 action = np.random.choice(legal_moves)
@@ -54,9 +51,8 @@ def do_rollout(model, hero_ids, port, verbose=False):
                 legal_moves = draft.state.get_legal_moves
                 action = np.random.choice(legal_moves)
             else:
-                action, uct_value, p, nn_value, leafs = player.act(state, action, num_reads=500, eps=0)
-                nn_values.append(nn_value)
-                uct_values.append(uct_value)
+                action = player.act(state, action, num_reads=500, deterministic=True)
+
         all_states.append(state.game_state)
         all_actions.append(action)
         state, value, done = draft.step(action)
@@ -72,7 +68,6 @@ def do_rollout(model, hero_ids, port, verbose=False):
                 f.write("poopy\n")
             print('Done but no victory')
             break
-        turn += 1
 
     if (value == 1 and player.pick_first) or (value == 0 and not player.pick_first):
         print("Agent victory!")
@@ -93,13 +88,12 @@ def do_rollout(model, hero_ids, port, verbose=False):
 
 
 if __name__ == '__main__':
-    model = torch.load('../weights/final_weights/draft_bert_pretrain_matching_with_clusters.torch',
-                                  map_location=torch.device('cpu'))
+    model = torch.load('draft_bert_pretrain_matching_with_clusters_v2.torch', map_location=torch.device('cpu'))
     model.eval()
     model.requires_grad = False
 
     memory_size = 500000
-    n_jobs = 4
+    n_jobs = 1
     n_games = 200
     port = 13337
     verbose = True
@@ -107,21 +101,18 @@ if __name__ == '__main__':
 
     memory = deque(maxlen=memory_size)
     f = partial(do_rollout, model, hero_ids)
-
+    file_name = 'allpick_v2_vs_random_memory_500_rollouts.pickle'
     times = []
     start = time.time()
 
     for batch_of_games in range(n_games // n_jobs):
+        start = time.time()
+
         start_batch = time.time()
         with Pool(n_jobs) as pool:
             results = pool.map_async(f, [port + i for i in range(n_jobs)]).get()
             memory.extend(results)
-        times.append(time.time() - start_batch)
-        print(f'Finished batch in {times[-1]}s')
-    end = time.time()
-    with open('../data/self_play/allpick_with_clusters_vs_random_memory_500_rollouts.pickle', 'wb') as f:
-        pickle.dump(memory, f)
-
-    print(f'Played {n_games} games using {n_jobs} jobs in 5 batches in {times} seconds each and total time was {end - start} seconds.')
-
-    # print(f'Played {n_games} games using {n_jobs} jobs in {time.time() - start}s')
+        with open(f'../data/self_play/{file_name}.pickle', 'wb') as file:
+            pickle.dump(memory, file)
+        end = time.time()
+        print(f'Finished batch {batch_of_games} in {end-start}s')

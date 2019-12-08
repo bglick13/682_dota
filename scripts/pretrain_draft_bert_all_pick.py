@@ -33,22 +33,22 @@ if __name__ == '__main__':
             pickle.dump(dataset, f)
 
     mask_idx = dataset.MASK
-    model: DraftBert = DraftBert(embedding_dim=256, n_head=4, n_encoder_layers=4, ff_dim=256,
-                                 n_heros=len(dataset.hero_ids), out_ff_dim=128, mask_idx=mask_idx,
-                                 n_clusters=clusterizer.centroids)
+    model: DraftBert = DraftBert(embedding_dim=256, n_head=4, n_encoder_layers=2, ff_dim=256,
+                                 n_heros=len(dataset.hero_ids), out_ff_dim=256, mask_idx=mask_idx,
+                                 n_clusters=None)
 
-    model.next_hero_output.requires_grad = False  # Can't train next hero prediction since all pick data isn't ordered
+    for p in model.parameters():
+        if p.dim() > 1:
+            torch.nn.init.xavier_uniform(p)
 
     print(f'Number of trainable params: {sum(p.numel() for p in model.parameters() if p.requires_grad)}')
 
     model.cuda()
 
-    train_hist = model.pretrain_all_pick(dataset, **{'epochs': int(1), 'lr': 1.0e-4, 'batch_size': 1024, 'mask_pct': 0.1})
+    train_hist = model.pretrain_all_pick(dataset, **{'epochs': int(1), 'lr': 1.0e-4, 'batch_size': 256, 'mask_pct': 0.1})
     with open('all_pick_pretrain_train_hist.pickle', 'wb') as f:
         pickle.dump(train_hist, f)
-    torch.save(model, 'draft_bert_pretrain_matching_with_clusters.torch')
+
+    torch.save(model, 'draft_bert_pretrain_matching_with_clusters_v2.torch')
     test_hist = model.pretrain_all_pick(dataset, **{'epochs': int(1), 'lr': 1.0e-4, 'batch_size': 1024,
                                                     'mask_pct': 0.1, 'test': True, 'print_iter': 1})
-
-    with open('all_pick_pretrain_test_hist.pickle', 'wb') as f:
-        pickle.dump(test_hist, f)

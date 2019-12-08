@@ -88,32 +88,31 @@ class DraftAgent(DummyAgent):
         """
         pass
 
-    def act(self, state, action=-1, num_reads=100, deterministic=False, use_clusters=True):
+    def act(self, state, action=-1, num_reads=100, deterministic=False, running_avg=False):
         if self.solver is None:
-            self.root = UCTNode(state, action)
+            self.root = UCTNode(state, action, running_avg=running_avg)
             # self.root.number_visits += 1
             self.solver = UCT(self.root, num_reads)
         else:
-            self.root = UCTNode(state, action, self.root)
+            self.root = UCTNode(state, action, self.root, running_avg=running_avg)
             # self.root.number_visits += 1
             self.solver.root = self.root
 
         leafs = []
         for _ in range(num_reads):
             leafs.append(self.simulate())
-        action, value, values = self.root.best_child()
+
+        if deterministic:
+            action = np.random.choice(np.flatnonzero(np.isclose(self.root.child_total_value,
+                                                                self.root.child_total_value.max())))
+        else:
+            p = F.softmax(FloatTensor(self.root.child_total_value))
+            action = np.random.choice(range(len(self.root.child_total_value)), p=p)
         # nn_probs, nn_value, _ = self.get_preds(state, plot_attn=True, use_clusters=use_clusters)
 
         next_state = state.take_action(action)
-        nn_probs, nn_value, _ = self.get_preds(next_state, plot_attn=True, use_clusters=use_clusters)
-        p = F.softmax(FloatTensor(values), -1).numpy()
-        if not deterministic:
-            action = np.random.choice(range(len(values)), p=p)
-        else:
-            top5 = values.argsort()[-5:]
-            _p = F.softmax(FloatTensor(values[top5]), -1).numpy()
-            action = np.random.choice(top5, p=_p)
-        return action, values, p, nn_value, leafs
+
+        return action
 
     def get_preds(self, leaf: Union[UCTNode, DraftState], plot_attn=False, target_cluster=None, use_clusters=True):
         if isinstance(leaf, UCTNode):
@@ -143,14 +142,18 @@ class DraftAgent(DummyAgent):
         #         turn = (s_in > 2).sum()
         #         plt.savefig(f'heatmap_layer_{i}_turn_{turn}_player_{self.pick_first}.png')
         if state.next_pick_index < 22:
-            cluster_out = self.model.get_cluster_predictions(encoded_s)
-            if self.pick_first:
-                friendly_cluster_hs = cluster_out[2][0, 0, :]
-                opponent_cluster_hs = cluster_out[2][0, 1, :]
+            if self.model.n_clusters is not None:
+                cluster_out = self.model.get_cluster_predictions(encoded_s)
+                if self.pick_first:
+                    friendly_cluster_hs = cluster_out[2][0, 0, :]
+                    opponent_cluster_hs = cluster_out[2][0, 1, :]
 
+                else:
+                    friendly_cluster_hs = cluster_out[2][0, 1, :]
+                    opponent_cluster_hs = cluster_out[2][0, 0, :]
             else:
-                friendly_cluster_hs = cluster_out[2][0, 1, :]
-                opponent_cluster_hs = cluster_out[2][0, 0, :]
+                friendly_cluster_hs = None
+                opponent_cluster_hs = None
 
             # This should work to force the agent to attempt to be in a certain cluster
             if target_cluster is not None:
