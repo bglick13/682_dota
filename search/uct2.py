@@ -52,6 +52,7 @@ class UCTNode(object):
                 self.u_running_mean = (.9 * self.u_running_mean) + (.1 * u)
             q = (q - self.q_running_mean) / (self.q_running_mean + 1e-5)
             u = (u - self.u_running_mean) / (self.u_running_mean + 1e-5)
+
         values = q + u
 
         legal_moves = self.state.get_legal_moves

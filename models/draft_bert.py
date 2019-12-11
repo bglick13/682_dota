@@ -235,11 +235,11 @@ class AllPickDataset(Dataset):
             g = nx.read_gpickle(g)
 
         if 'MASK' not in hero_ids['name']:
-            hero_ids = hero_ids.append({'id': -1, 'name': 'MASK'}, ignore_index=True)
+            hero_ids = hero_ids.append({'id': 999, 'name': 'MASK'}, ignore_index=True)
         if 'SEP' not in hero_ids['name']:
-            hero_ids = hero_ids.append({'id': -2, 'name': 'SEP'}, ignore_index=True)
+            hero_ids = hero_ids.append({'id': 1000, 'name': 'SEP'}, ignore_index=True)
         if 'CLS' not in hero_ids['name']:
-            hero_ids = hero_ids.append({'id': -3, 'name': 'CLS'}, ignore_index=True)
+            hero_ids = hero_ids.append({'id': 1001, 'name': 'CLS'}, ignore_index=True)
 
         self.hero_ids = hero_ids
         self.le = LabelEncoder()
@@ -248,9 +248,9 @@ class AllPickDataset(Dataset):
         self.mask_pct = mask_pct
         self.clusterizer = clusterizer
 
-        self.MASK = self.hero_ids.loc[self.hero_ids['id'] == -1, 'model_id'].values[0]
-        self.SEP = self.hero_ids.loc[self.hero_ids['id'] == -2, 'model_id'].values[0]
-        self.CLS = self.hero_ids.loc[self.hero_ids['id'] == -3, 'model_id'].values[0]
+        self.MASK = self.hero_ids.loc[self.hero_ids['id'] == 999, 'model_id'].values[0]
+        self.SEP = self.hero_ids.loc[self.hero_ids['id'] == 1000, 'model_id'].values[0]
+        self.CLS = self.hero_ids.loc[self.hero_ids['id'] == 1001, 'model_id'].values[0]
 
         print(self.hero_ids)
 
@@ -439,7 +439,7 @@ class DraftBert(torch.nn.Module):
         self.masked_output_hidden = torch.nn.Sequential(torch.nn.Linear(embedding_dim, out_ff_dim),
                                                  torch.nn.LayerNorm(out_ff_dim),
                                                  Swish())
-        self.masked_output_out = torch.nn.Linear(out_ff_dim, n_heros)
+        self.masked_output_out = torch.nn.Linear(out_ff_dim, n_heros-3)
         self.masked_output = torch.nn.Sequential(self.masked_output_hidden, self.masked_output_out)
 
         # Matching classifier layer - Only used for pretraining
@@ -458,7 +458,7 @@ class DraftBert(torch.nn.Module):
         self.next_hero_output_hidden = torch.nn.Sequential(torch.nn.Linear(embedding_dim, out_ff_dim),
                                                    torch.nn.LayerNorm(out_ff_dim),
                                                    Swish())
-        self.next_hero_out = torch.nn.Linear(out_ff_dim, n_heros)
+        self.next_hero_out = torch.nn.Linear(out_ff_dim, n_heros-3)
         self.next_hero_output = torch.nn.Sequential(self.next_hero_output_hidden, self.next_hero_out)
 
         # Cluster related layers
@@ -845,9 +845,9 @@ class DraftBert(torch.nn.Module):
                                 {'params': self.win_output.parameters()},
                                 {'params': self.next_hero_output.parameters()},
                                 {'params': self.matching_output.parameters()},
-                                {'params': self.cluster_output.parameters()},
-                                {'params': self.friendly_cluster_update.parameters()},
-                                {'params': self.opponent_cluster_update.parameters()},
+                                # {'params': self.cluster_output.parameters()},
+                                # {'params': self.friendly_cluster_update.parameters()},
+                                # {'params': self.opponent_cluster_update.parameters()},
                                 {'params': self.hero_embeddings.parameters()}], lr=lr)
         next_hero_loss = torch.nn.CrossEntropyLoss(reduction='mean')
         win_loss = torch.nn.CrossEntropyLoss(reduction='mean')

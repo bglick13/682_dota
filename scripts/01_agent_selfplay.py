@@ -28,8 +28,6 @@ def do_rollout(model, hero_ids, num_reads, port, verbose=False, eps=0.1):
     # TODO: record and train on final cluster values here
     all_actions = []
     all_states = []
-    player1_nn_values = []
-    player2_nn_values = []
     player1_uct_values = []
     player2_uct_values = []
 
@@ -42,18 +40,15 @@ def do_rollout(model, hero_ids, num_reads, port, verbose=False, eps=0.1):
             raise IndexError
 
         if npi < 13:
-            action, uct_value, p, nn_value, leafs = player1.act(state, action, num_reads=num_reads)
-            player1_nn_values.append(nn_value)
-            player1_uct_values.append(uct_value)
-            # player1_uct_rollout_leafs.append(leafs)
+            action, p = player1.act(state, action, num_reads=num_reads)
+            player1_uct_values.append(p)
         else:
-            action, uct_value, p, nn_value, leafs = player2.act(state, action, num_reads=num_reads)
-            player2_nn_values.append(nn_value)
-            player2_uct_values.append(uct_value)
-            # player2_uct_rollout_leafs.append(leafs)
+            action, p = player2.act(state, action, num_reads=num_reads)
+            player2_uct_values.append(p)
 
         all_states.append(state.game_state)
         all_actions.append(action)
+
         state, value, done = draft.step(action)
 
         if value == 0:  # Dire victory
@@ -73,16 +68,15 @@ def do_rollout(model, hero_ids, num_reads, port, verbose=False, eps=0.1):
     all_values = [value] * 23
     del model
     empty_cache()
-    return dict(all_actions=all_actions, all_states=all_states, all_values=all_values, player1_nn_values=player1_nn_values,
-                player2_nn_values=player2_nn_values, player1_uct_values=player1_uct_values,
-                player2_uct_values=player2_uct_values,)
+    return dict(all_actions=all_actions, all_states=all_states, all_values=all_values,
+                player1_uct_values=player1_uct_values, player2_uct_values=player2_uct_values)
 
 
 if __name__ == '__main__':
     file_name = None
     if file_name is None:
         file_name = f'selfplay_{time.time()}'
-    model: DraftBert = load('../weights/final_weights/train_from_selfplay_2.torch',
+    model: DraftBert = load('../weights/final_weights/draft_bert_pretrain_captains_mode_with_clusters_v2.torch',
                             map_location=device('cpu'))
     model.eval()
     model.requires_grad = False

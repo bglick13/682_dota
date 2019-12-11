@@ -14,11 +14,7 @@ if __name__ == '__main__':
                   'D_Ban', 'R_Ban',
                   'R_Pick', 'D_Pick']
 
-    model: DraftBert = torch.load('../weights/final_weights/draft_bert_pretrain_matching_with_clusters.torch')
-    # model.has_trained_on_all_pick = True
-    # assert model.has_trained_on_all_pick, 'Pre-train on all-pick dataset before training on captains mode'
-    model.masked_output.requires_grad = False
-    model.matching_output.requires_grad = False
+    model: DraftBert = torch.load('../weights/final_weights/draft_bert_pretrain_matching_with_clusters_v2.torch')
     print(f'Number of trainable params: {sum(p.numel() for p in model.parameters() if p.requires_grad)}')
 
     with open('../weights/kmeans.pickle', 'rb') as f:
@@ -37,7 +33,7 @@ if __name__ == '__main__':
     model.cuda()
 
     train_hist = model.pretrain_captains_mode(dataset, **{'epochs': int(1), 'lr': 1.0e-4, 'batch_size': 64})
-    torch.save(model, '../weights/final_weights/draft_bert_pretrain_captains_mode_with_clusters.torch')
+    torch.save(model, '../weights/final_weights/draft_bert_pretrain_captains_mode_with_clusters_v2.torch')
     with open('cm_pretrain_train_hist.pickle', 'wb') as f:
         pickle.dump(train_hist, f)
     test_hist = model.pretrain_captains_mode(dataset, **{'epochs': int(1), 'lr': 1.0e-4, 'batch_size': 64,

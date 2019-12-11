@@ -103,16 +103,30 @@ class DraftAgent(DummyAgent):
             leafs.append(self.simulate())
 
         if deterministic:
-            action = np.random.choice(np.flatnonzero(np.isclose(self.root.child_total_value,
-                                                                self.root.child_total_value.max())))
+            p = self.root.child_Q()
+            legal_moves = state.get_legal_moves
+            illegal_moves = np.ones(p.shape, dtype=bool)
+            illegal_moves[legal_moves] = False
+            p[illegal_moves] = -np.inf
+            top5 = p.argsort()[-5:]
+            p = F.softmax(FloatTensor(p[top5]), -1).numpy()
+            action = np.random.choice(top5, p=p)
+
         else:
-            p = F.softmax(FloatTensor(self.root.child_total_value))
+            p = self.root.child_Q()
+            legal_moves = state.get_legal_moves
+            illegal_moves = np.ones(p.shape, dtype=bool)
+            illegal_moves[legal_moves] = False
+            p[illegal_moves] = -np.inf
+            p = F.softmax(FloatTensor(p)
+                          ).numpy()
+
             action = np.random.choice(range(len(self.root.child_total_value)), p=p)
         # nn_probs, nn_value, _ = self.get_preds(state, plot_attn=True, use_clusters=use_clusters)
 
         next_state = state.take_action(action)
 
-        return action
+        return action, p
 
     def get_preds(self, leaf: Union[UCTNode, DraftState], plot_attn=False, target_cluster=None, use_clusters=True):
         if isinstance(leaf, UCTNode):
