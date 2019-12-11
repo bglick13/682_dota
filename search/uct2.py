@@ -18,9 +18,9 @@ class UCTNode(object):
         self.number_visits = 0
         self.total_value = 0.0
         self.children = {}
-        self.child_priors = np.zeros([len(self.state.heros)], dtype=np.float32)
-        self.child_total_value = np.zeros([len(self.state.heros)], dtype=np.float32)
-        self.child_number_visits = np.zeros([len(self.state.heros)], dtype=np.float32)
+        self.child_priors = np.zeros([len(self.state.heros)-3], dtype=np.float32)
+        self.child_total_value = np.zeros([len(self.state.heros)-3], dtype=np.float32)
+        self.child_number_visits = np.zeros([len(self.state.heros)-3], dtype=np.float32)
         self.q_running_mean = None
         self.u_running_mean = None
         self.running_avg = running_avg
