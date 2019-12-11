@@ -85,7 +85,7 @@ if __name__ == '__main__':
     n_games = 500
     port = 13337
     verbose = True
-    hero_ids = pd.read_json('../const/draft_bert_hero_ids.json', orient='records')
+    hero_ids = pd.read_json('../const/draft_bert_clustering_hero_ids.json', orient='records')
 
     memory = deque(maxlen=memory_size)
     # do_rollout(model, hero_ids, port)
