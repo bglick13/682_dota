@@ -732,9 +732,9 @@ class DraftBert(torch.nn.Module):
         opt = torch.optim.Adam([{'params': self.encoder.parameters()},
                                 {'params': self.win_output.parameters()},
                                 {'params': self.next_hero_output.parameters()},
-                                {'params': self.cluster_output.parameters()},
-                                {'params': self.friendly_cluster_update.parameters()},
-                                {'params': self.opponent_cluster_update.parameters()},
+                                # {'params': self.cluster_output.parameters()},
+                                # {'params': self.friendly_cluster_update.parameters()},
+                                # {'params': self.opponent_cluster_update.parameters()},
                                 {'params': self.hero_embeddings.parameters()}], lr=lr)
 
         next_hero_loss = torch.nn.CrossEntropyLoss(reduction='mean')
@@ -822,7 +822,7 @@ class DraftBert(torch.nn.Module):
                         cluster_acc = -1
 
                     print(
-                        f'Epoch: {epoch}, Step: {i}, Loss: {batch_loss} (Hero: {mask_batch_loss}, Cluster: {cluster_loss_batch}, Win: {batch_win_loss}), Acc: {batch_acc}, Top 5 Acc: {top_5_acc}, '
+                        f'Epoch: {epoch}, Step: {i}, Loss: {batch_loss} (Hero: {mask_batch_loss}, Win: {batch_win_loss}), Acc: {batch_acc}, Top 5 Acc: {top_5_acc}, '
                         f'Win Acc: {win_acc}, Cluster Acc: {cluster_acc}')
                 total_steps += 1
             torch.save(self, f'../weights/checkpoints/draft_bert_selfplay_checkpoint_{epoch}.torch')
@@ -844,7 +844,7 @@ class DraftBert(torch.nn.Module):
         opt = torch.optim.Adam([{'params': self.encoder.parameters()},
                                 {'params': self.win_output.parameters()},
                                 {'params': self.next_hero_output.parameters()},
-                                {'params': self.matching_output.parameters()},
+                                # {'params': self.matching_output.parameters()},
                                 # {'params': self.cluster_output.parameters()},
                                 # {'params': self.friendly_cluster_update.parameters()},
                                 # {'params': self.opponent_cluster_update.parameters()},

@@ -14,7 +14,7 @@ from models.draft_agent import DraftAgent, DraftBert
 
 
 def do_rollout(old_model, new_model, hero_ids, port, verbose=False):
-    player_1_pick_first = np.random.choice([True, False])
+    player_1_pick_first = port % 2 == 0
     player1: DraftAgent = DraftAgent(model=old_model, pick_first=player_1_pick_first)
     player2: DraftAgent = DraftAgent(model=new_model, pick_first=not player_1_pick_first)
     draft = CaptainModeDraft(hero_ids, port)
@@ -37,18 +37,14 @@ def do_rollout(old_model, new_model, hero_ids, port, verbose=False):
 
         if npi < 13:
             if player_1_pick_first:
-                action, uct_value, p, nn_value, _ = player1.act(state, action, num_reads=500, deterministic=True)
-                player1_values.append(nn_value)
+                action, p = player1.act(state, action, num_reads=500, deterministic=True)
             else:
-                action, uct_value, p, nn_value, _ = player2.act(state, action, num_reads=500, deterministic=True)
-                player2_values.append(nn_value)
+                action, p = player2.act(state, action, num_reads=500, deterministic=True)
         else:
             if player_1_pick_first:
-                action, uct_value, p, nn_value, _ = player2.act(state, action, num_reads=500, deterministic=True)
-                player2_values.append(nn_value)
+                action, p = player2.act(state, action, num_reads=500, deterministic=True)
             else:
-                action, uct_value, p, nn_value, _ = player1.act(state, action, num_reads=500, deterministic=True)
-                player1_values.append(nn_value)
+                action, p = player1.act(state, action, num_reads=500, deterministic=True)
 
         all_states.append(state.game_state)
         all_actions.append(action)
@@ -89,12 +85,12 @@ if __name__ == '__main__':
     file_name = 'eval1'
     if file_name is None:
         file_name = f'selfplay_{time.time()}'
-    old_model: DraftBert = load('../weights/final_weights/train_from_selfplay_2.torch',
+    old_model: DraftBert = load('../weights/final_weights/train_1_v2.torch',
                             map_location=device('cpu'))
     old_model.eval()
     old_model.requires_grad = False
 
-    new_model: DraftBert = load('../data/self_play/memories_for_train_3/new_model.torch',
+    new_model: DraftBert = load('../data/self_play/memories_2_v2/new_model.torch',
                             map_location=device('cpu'))
     new_model.eval()
     new_model.requires_grad = False

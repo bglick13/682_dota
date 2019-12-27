@@ -19,7 +19,7 @@ from const.pro_drafts import drafts
 def do_rollout(model, hero_ids, DRAFT, port, verbose=False):
     draft_id = 0
 
-    player = DraftAgent(model=model, pick_first=np.random.choice([True, False]))
+    player = DraftAgent(model=model, pick_first=(port % 2) == 0)
     draft = CaptainModeDraft(hero_ids, port)
     state = draft.reset()
     turn = 0
@@ -38,9 +38,7 @@ def do_rollout(model, hero_ids, DRAFT, port, verbose=False):
 
         if npi < 13:
             if player.pick_first:
-                action, uct_value, p, nn_value, leafs = player.act(state, action, num_reads=500, deterministic=True)
-                nn_values.append(nn_value)
-                uct_values.append(uct_value)
+                action, p = player.act(state, action, num_reads=500, deterministic=True)
             else:
                 try:
                     action = hero_ids.loc[hero_ids['localized_name'] == DRAFT[draft_id], 'model_id'].values[0]
@@ -55,9 +53,7 @@ def do_rollout(model, hero_ids, DRAFT, port, verbose=False):
                     print(DRAFT[draft_id])
                 draft_id += 1
             else:
-                action, uct_value, p, nn_value, leafs = player.act(state, action, num_reads=500, deterministic=True)
-                nn_values.append(nn_value)
-                uct_values.append(uct_value)
+                action, p = player.act(state, action, num_reads=500, deterministic=True)
         all_states.append(state.game_state)
         all_actions.append(action)
         state, value, done = draft.step(action)
@@ -100,7 +96,7 @@ def do_rollout(model, hero_ids, DRAFT, port, verbose=False):
 
 
 if __name__ == '__main__':
-    model = torch.load('../data/self_play/memories_for_train_3/new_model.torch', map_location=torch.device('cpu'))
+    model = torch.load('../data/self_play/memories_2_v2/new_model.torch', map_location=torch.device('cpu'))
     model.eval()
     model.requires_grad = False
 

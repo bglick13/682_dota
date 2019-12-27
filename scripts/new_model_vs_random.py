@@ -24,7 +24,7 @@ def do_rollout(model, hero_ids, port, verbose=False):
     # #     model = torch.load(model)
     # model.requires_grad = False
 
-    player = DraftAgent(model=model, pick_first=np.random.choice([True, False]))
+    player = DraftAgent(model=model, pick_first=port % 2 == 0)
     draft = CaptainModeDraft(hero_ids, port)
     state = draft.reset()
     turn = 0
@@ -43,9 +43,7 @@ def do_rollout(model, hero_ids, port, verbose=False):
 
         if npi < 13:
             if player.pick_first:
-                action, uct_value, p, nn_value, leafs = player.act(state, action, num_reads=500, deterministic=True)
-                nn_values.append(nn_value)
-                uct_values.append(uct_value)
+                action, p = player.act(state, action, num_reads=500, deterministic=True)
             else:
                 legal_moves = draft.state.get_legal_moves
                 action = np.random.choice(legal_moves)
@@ -54,9 +52,7 @@ def do_rollout(model, hero_ids, port, verbose=False):
                 legal_moves = draft.state.get_legal_moves
                 action = np.random.choice(legal_moves)
             else:
-                action, uct_value, p, nn_value, leafs = player.act(state, action, num_reads=500, deterministic=True)
-                nn_values.append(nn_value)
-                uct_values.append(uct_value)
+                action, p = player.act(state, action, num_reads=500, deterministic=True)
         all_states.append(state.game_state)
         all_actions.append(action)
         state, value, done = draft.step(action)
@@ -93,7 +89,8 @@ def do_rollout(model, hero_ids, port, verbose=False):
 
 
 if __name__ == '__main__':
-    model = torch.load('../data/self_play/memories_for_train_2/new_model.torch', map_location=torch.device('cpu'))
+    model = torch.load('../data/self_play/memories_1_v2/new_model.torch',
+                       map_location=torch.device('cpu'))
     model.eval()
     model.requires_grad = False
 
@@ -118,8 +115,8 @@ if __name__ == '__main__':
         times.append(time.time() - start_batch)
         print(f'Finished batch in {times[-1]}s')
     end = time.time()
-    with open('../data/self_play/new_model_3_vs_random_memory.pickle', 'wb') as f:
-        pickle.dump(memory, f)
+    # with open('../data/self_play/new_model_3_vs_random_memory.pickle', 'wb') as f:
+    #     pickle.dump(memory, f)
 
 
 ## TRAIN 1

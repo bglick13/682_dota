@@ -23,3 +23,5 @@ secret.py
 *.pdf
 
 notebooks/runs/fashion_mnist_experiment_1/events.out.tfevents.1575155409.DESKTOP-GBQN7M9.15780.0
+
+*.ini

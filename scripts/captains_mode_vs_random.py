@@ -89,7 +89,7 @@ def do_rollout(model, hero_ids, port, verbose=False):
 
 
 if __name__ == '__main__':
-    model: DraftBert = load('../weights/final_weights/draft_bert_pretrain_captains_mode_with_clusters.torch',
+    model: DraftBert = load('../weights/final_weights/draft_bert_pretrain_captains_mode_with_clusters_v2.torch',
                             map_location=device('cpu'))
     model.eval()
     model.requires_grad = False

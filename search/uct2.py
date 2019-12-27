@@ -36,7 +36,7 @@ class UCTNode(object):
         if self.running_avg:
             return np.sqrt(np.log(self.number_visits + 1)/(1 + self.child_number_visits))
         else:
-            return 5 * self.child_priors * np.sqrt(np.log(self.number_visits + 1) / (1 + self.child_number_visits))
+            return 10 * self.child_priors * np.sqrt(np.log(self.number_visits + 1) / (1 + self.child_number_visits))
 
     def best_child(self):
         if self.state.done:
